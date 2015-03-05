@@ -4,18 +4,53 @@
 
 package org.triple_brain.module.neo4j_user_repository;
 
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
 import com.google.inject.Inject;
+import com.google.inject.Injector;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.triple_brain.module.model.User;
+import org.triple_brain.module.model.test.GraphComponentTest;
+import org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jModule;
 import org.triple_brain.module.repository.user.UserRepository;
+
+import java.sql.SQLException;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class Neo4jUserRepositoryTest {
 
+    protected static Injector injector;
+
     @Inject
     UserRepository userRepository;
+
+    static GraphDatabaseService graphDatabaseService;
+
+    @BeforeClass
+    public static void realBeforeClass() {
+        injector = Guice.createInjector(
+                Neo4jModule.forTestingUsingEmbedded(),
+                new Neo4jUserRepositoryModule()
+        );
+        graphDatabaseService = injector.getInstance(GraphDatabaseService.class);
+    }
+
+    @Before
+    public final void before() throws SQLException {
+        injector.injectMembers(this);
+    }
+
+    @AfterClass
+    public static void afterClass(){
+        graphDatabaseService.shutdown();
+        Neo4jModule.clearDb();
+    }
 
     @Test
     public void can_save_user(){
