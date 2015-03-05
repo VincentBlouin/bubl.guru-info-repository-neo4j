@@ -22,6 +22,8 @@ import static org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jRestApi
 
 public class Neo4jUserRepositoryTest {
 
+//    test
+
     protected static Injector injector;
 
     @Inject
