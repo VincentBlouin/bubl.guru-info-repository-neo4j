@@ -8,21 +8,25 @@ import org.neo4j.rest.graphdb.query.QueryEngine;
 import org.neo4j.rest.graphdb.util.QueryResult;
 import org.triple_brain.module.model.User;
 import org.triple_brain.module.model.UserUris;
-import org.triple_brain.module.model.graph.GraphElementType;
 import org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jFriendlyResource;
+import org.triple_brain.module.repository.user.ExistingUserException;
 import org.triple_brain.module.repository.user.NonExistingUserException;
 import org.triple_brain.module.repository.user.UserRepository;
 
 import javax.inject.Inject;
 import java.net.URI;
 import java.util.Map;
+
 import static org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.map;
 import static org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.wrap;
 
 public class Neo4jUserRepository implements UserRepository {
 
+    public static String neo4jType = "user";
+
     enum props{
-        username
+        username,
+        email
     }
 
     @Inject
@@ -30,15 +34,23 @@ public class Neo4jUserRepository implements UserRepository {
 
     @Override
     public void save(User user) {
-        queryEngine.query(
-                "create (n:" + GraphElementType.vertex + " {props})",
-                wrap(map(
-                        Neo4jFriendlyResource.props.uri.name(),
-                        new UserUris(user).baseUri().toString(),
-                        props.username.name(),
-                        user.username()
-                ))
-        );
+        try {
+            queryEngine.query(
+                    "create (n:" + neo4jType + " {props})",
+                    wrap(map(
+                            Neo4jFriendlyResource.props.uri.name(),
+                            new UserUris(user).baseUri().toString(),
+                            props.username.name(),
+                            user.username(),
+                            props.email.name(),
+                            user.email()
+                    ))
+            );
+        }catch(Exception e){
+            throw new ExistingUserException(
+                    user.email()
+            );
+        }
     }
 
     @Override
