@@ -49,17 +49,17 @@ public class Neo4jUserRepositoryTest {
         );
         graphDatabaseService = injector.getInstance(GraphDatabaseService.class);
         queryEngine = injector.getInstance(QueryEngine.class);
-        createUniqueEmailConstraint();
-        createUniqueUriConstraint();
+//        createUniqueEmailConstraint();
+//        createUniqueUriConstraint();
     }
 
     @Before
-    public final void before(){
+    public final void before() {
         injector.injectMembers(this);
     }
 
     @After
-    public final void after(){
+    public final void after() {
         graphComponentTest.removeWholeGraph();
     }
 
@@ -81,7 +81,7 @@ public class Neo4jUserRepositoryTest {
                 randomEmail(),
                 "[fr]"
         ).password("patate");
-        userRepository.save(user);
+        userRepository.createUser(user);
         assertTrue(
                 userRepository.usernameExists("roger_lamothe")
         );
@@ -90,19 +90,21 @@ public class Neo4jUserRepositoryTest {
     @Test
     public void try_to_save_twice_a_user_with_same_email_is_not_possible() {
         String email = randomEmail();
-        User user_1 = User.withUsernameEmailAndLocales(
+        User user1 = User.withUsernameEmailAndLocales(
                 randomUserName(),
                 email,
                 "[fr]"
         );
-        User user_2 = User.withUsernameEmailAndLocales(
+        user1.password("password");
+        User user2 = User.withUsernameEmailAndLocales(
                 randomUserName(),
                 email,
                 "[fr]"
         );
-        userRepository.save(user_1);
+        user2.password("password");
+        userRepository.createUser(user1);
         try {
-            userRepository.save(user_2);
+            userRepository.createUser(user2);
             fail();
         } catch (ExistingUserException e) {
             assertThat(
@@ -114,34 +116,60 @@ public class Neo4jUserRepositoryTest {
 
     @Test
     public void try_to_save_twice_a_user_with_same_username_is_not_possible() {
-        User user_1 = User.withUsernameEmailAndLocales(
+        User user1 = User.withUsernameEmailAndLocales(
                 "a_user_name",
                 randomEmail(),
                 "[fr]"
         );
+        user1.password("password");
         String user2Email = randomEmail();
-        User user_2 = User.withUsernameEmailAndLocales(
+        User user2 = User.withUsernameEmailAndLocales(
                 "a_user_name",
                 user2Email,
                 "[fr]"
         );
-        userRepository.save(user_1);
+        user2.password("password");
+        userRepository.createUser(user1);
         try {
-            userRepository.save(user_2);
+            userRepository.createUser(user2);
             fail();
         } catch (ExistingUserException e) {
-            assertThat(e.getMessage(), Matchers.is("A user already exist with username or email: " + user2Email));
+            assertThat(e.getMessage(), Matchers.is("A user already exist with username or email: " + "a_user_name"));
         }
     }
 
     @Test
     public void user_fields_are_well_saved() {
-
+        String username = randomUserName();
+        String email = randomEmail();
+        User user = User.withUsernameEmailAndLocales(
+                username,
+                email,
+                "[fr]"
+        ).password("secret");
+        userRepository.createUser(user);
+        User loadedUser = userRepository.findByEmail(email);
+        assertThat(
+                loadedUser.id(),
+                is(user.id())
+        );
+        assertThat(
+                loadedUser.email(),
+                is(user.email())
+        );
+        assertTrue(
+                loadedUser.hasPassword("secret")
+        );
     }
 
     @Test
     public void can_find_user_by_email() {
-
+        User user = createAUser();
+        userRepository.createUser(user);
+        assertThat(
+                userRepository.findByEmail(user.email()),
+                is(user)
+        );
     }
 
     @Test
@@ -159,7 +187,7 @@ public class Neo4jUserRepositoryTest {
 
     }
 
-    private static void createUniqueEmailConstraint(){
+    private static void createUniqueEmailConstraint() {
         String query = "CREATE CONSTRAINT ON (user:" +
                 Neo4jUserRepository.neo4jType +
                 ") ASSERT user." + Neo4jUserRepository.props.email + " IS UNIQUE";
@@ -169,7 +197,7 @@ public class Neo4jUserRepositoryTest {
         );
     }
 
-    private static void createUniqueUriConstraint(){
+    private static void createUniqueUriConstraint() {
         String query = "CREATE CONSTRAINT ON (user:" +
                 Neo4jUserRepository.neo4jType +
                 ") ASSERT user." + Neo4jFriendlyResource.props.uri + " IS UNIQUE";
@@ -179,11 +207,21 @@ public class Neo4jUserRepositoryTest {
         );
     }
 
-    private String randomUserName(){
+    private String randomUserName() {
         return UUID.randomUUID().toString();
     }
 
-    private String randomEmail(){
+    private String randomEmail() {
         return UUID.randomUUID().toString() + "@me.com";
+    }
+
+    private User createAUser(){
+        User user = User.withUsernameEmailAndLocales(
+                randomUserName(),
+                randomEmail(),
+                "[fr]"
+        );
+        user.password("password");
+        return user;
     }
 }
