@@ -58,8 +58,10 @@ public class Neo4jUserRepository implements UserRepository {
             );
         }
         queryEngine.query(
-                "create (n:" + neo4jType + " {props})",
+                "create (user:resource {props})",
                 wrap(map(
+                        Neo4jFriendlyResource.props.type.name(),
+                        neo4jType,
                         Neo4jFriendlyResource.props.uri.name(),
                         user.id(),
                         props.username.name(),
@@ -75,35 +77,47 @@ public class Neo4jUserRepository implements UserRepository {
                         props.salt.name(),
                         user.salt(),
                         props.passwordHash.name(),
-                        user.passwordHash()
+                        user.passwordHash(),
+                        "is_public",
+                        "true"
                 ))
         );
     }
 
     @Override
-    public User findById(String id) throws NonExistingUserException {
-        return null;
-    }
-
-    @Override
     public User findByUsername(String username) throws NonExistingUserException {
-        return null;
+        URI uri = new UserUris(username).baseUri();
+        return userFromResult(
+                queryEngine.query(
+                        "START user=node:node_auto_index('uri:" + uri + "') " +
+                                returnQueryPart,
+                        wrap(map())
+                ),
+                username
+        );
     }
 
     @Override
     public User findByEmail(String email) throws NonExistingUserException {
+        if (email.trim().equals("")) {
+            throw new NonExistingUserException("");
+        }
         String query = "START user=node:node_auto_index('email:" + email + "') " +
                 returnQueryPart;
         return userFromResult(
                 queryEngine.query(
                         query,
                         wrap(map())
-                )
+                ),
+                email
         );
     }
 
     @Override
     public Boolean usernameExists(String username) {
+        if (username.trim().equals("")) {
+            return false;
+        }
         URI uri = new UserUris(username).baseUri();
         QueryResult<Map<String, Object>> result = queryEngine.query(
                 "START n=node:node_auto_index('uri:" + uri + "') " +
@@ -115,15 +129,25 @@ public class Neo4jUserRepository implements UserRepository {
 
     @Override
     public Boolean emailExists(String email) {
+        if (email.trim().equals("")) {
+            return false;
+        }
+        String query = "START n=node:node_auto_index('email:" + email + "') " +
+                "RETURN count(n) as number";
         QueryResult<Map<String, Object>> result = queryEngine.query(
-                "START n=node:node_auto_index('email:" + email + "') " +
-                        "return n." + props.email,
-                wrap(map())
+                query,
+                map()
         );
-        return result.iterator().hasNext();
+        Integer numberOf = new Integer(
+                result.iterator().next().get("number").toString()
+        );
+        return numberOf != 0;
     }
 
-    private User userFromResult(QueryResult<Map<String, Object>> results) {
+    private User userFromResult(QueryResult<Map<String, Object>> results, String identifier) {
+        if (!results.iterator().hasNext()) {
+            throw new NonExistingUserException(identifier);
+        }
         Map<String, Object> result = results.iterator().next();
         URI userUri = URI.create(result.get("user.uri").toString());
         User user = User.withUsernameEmailAndLocales(

@@ -12,10 +12,10 @@ import org.junit.*;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.rest.graphdb.query.QueryEngine;
 import org.triple_brain.module.model.User;
-import org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jFriendlyResource;
 import org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jModule;
 import org.triple_brain.module.neo4j_graph_manipulator.graph.test.Neo4JGraphComponentTest;
 import org.triple_brain.module.repository.user.ExistingUserException;
+import org.triple_brain.module.repository.user.NonExistingUserException;
 import org.triple_brain.module.repository.user.UserRepository;
 
 import java.util.UUID;
@@ -23,7 +23,6 @@ import java.util.UUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
-import static org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.map;
 
 public class Neo4jUserRepositoryTest {
 
@@ -49,8 +48,6 @@ public class Neo4jUserRepositoryTest {
         );
         graphDatabaseService = injector.getInstance(GraphDatabaseService.class);
         queryEngine = injector.getInstance(QueryEngine.class);
-//        createUniqueEmailConstraint();
-//        createUniqueUriConstraint();
     }
 
     @Before
@@ -174,37 +171,36 @@ public class Neo4jUserRepositoryTest {
 
     @Test
     public void try_to_find_none_existing_user_by_email_throw_and_Exception() {
+        try {
+            userRepository.findByEmail("non_existing@example.org");
+            fail();
+        } catch (NonExistingUserException e) {
+            assertThat(e.getMessage(), Matchers.is("User not found: non_existing@example.org"));
+        }
 
+        try {
+            userRepository.findByEmail("");
+            fail();
+        } catch (NonExistingUserException e) {
+            assertThat(e.getMessage(), Matchers.is("User not found: "));
+        }
     }
 
     @Test
     public void can_find_user_by_user_name() {
-
+        User user = createAUser();
+        userRepository.createUser(user);
+        assertThat(userRepository.findByUsername(user.username()), Matchers.is(user));
     }
 
     @Test
     public void try_to_find_none_existing_user_by_username_throw_and_Exception() {
-
-    }
-
-    private static void createUniqueEmailConstraint() {
-        String query = "CREATE CONSTRAINT ON (user:" +
-                Neo4jUserRepository.neo4jType +
-                ") ASSERT user." + Neo4jUserRepository.props.email + " IS UNIQUE";
-        queryEngine.query(
-                query,
-                map()
-        );
-    }
-
-    private static void createUniqueUriConstraint() {
-        String query = "CREATE CONSTRAINT ON (user:" +
-                Neo4jUserRepository.neo4jType +
-                ") ASSERT user." + Neo4jFriendlyResource.props.uri + " IS UNIQUE";
-        queryEngine.query(
-                query,
-                map()
-        );
+        try {
+            userRepository.findByUsername("non_existing_user_name");
+            fail();
+        } catch (NonExistingUserException e) {
+            assertThat(e.getMessage(), Matchers.is("User not found: non_existing_user_name"));
+        }
     }
 
     private String randomUserName() {
@@ -215,7 +211,7 @@ public class Neo4jUserRepositoryTest {
         return UUID.randomUUID().toString() + "@me.com";
     }
 
-    private User createAUser(){
+    private User createAUser() {
         User user = User.withUsernameEmailAndLocales(
                 randomUserName(),
                 randomEmail(),
