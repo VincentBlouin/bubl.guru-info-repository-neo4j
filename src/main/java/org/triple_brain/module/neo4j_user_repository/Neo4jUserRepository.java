@@ -77,9 +77,7 @@ public class Neo4jUserRepository implements UserRepository {
                         props.salt.name(),
                         user.salt(),
                         props.passwordHash.name(),
-                        user.passwordHash(),
-                        "is_public",
-                        "true"
+                        user.passwordHash()
                 ))
         );
     }
