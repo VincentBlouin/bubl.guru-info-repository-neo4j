@@ -11,7 +11,9 @@ import org.hamcrest.Matchers;
 import org.junit.*;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.rest.graphdb.query.QueryEngine;
+import org.triple_brain.module.model.ModelModule;
 import org.triple_brain.module.model.User;
+import org.triple_brain.module.model.UserNameGenerator;
 import org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jModule;
 import org.triple_brain.module.neo4j_graph_manipulator.graph.test.Neo4JGraphComponentTest;
 import org.triple_brain.module.repository.user.ExistingUserException;
@@ -34,6 +36,9 @@ public class Neo4jUserRepositoryTest {
     @Inject
     Neo4JGraphComponentTest graphComponentTest;
 
+    @Inject
+    UserNameGenerator userNameGenerator;
+
     static GraphDatabaseService graphDatabaseService;
 
 
@@ -44,7 +49,8 @@ public class Neo4jUserRepositoryTest {
         Neo4jModule.clearDb();
         injector = Guice.createInjector(
                 Neo4jModule.forTestingUsingEmbedded(),
-                new Neo4jUserRepositoryModule()
+                new Neo4jUserRepositoryModule(),
+                new ModelModule()
         );
         graphDatabaseService = injector.getInstance(GraphDatabaseService.class);
         queryEngine = injector.getInstance(QueryEngine.class);
@@ -58,6 +64,7 @@ public class Neo4jUserRepositoryTest {
     @After
     public final void after() {
         graphComponentTest.removeWholeGraph();
+        userNameGenerator.reset();
     }
 
     @AfterClass
@@ -73,32 +80,24 @@ public class Neo4jUserRepositoryTest {
                         "roger_lamothe"
                 )
         );
-        User user = User.withUsernameEmailAndLocales(
-                "roger_lamothe",
-                randomEmail(),
-                "[fr]"
-        ).password("patate");
+        User user = User.withEmail(
+                "some_email@example.org"
+        ).password("password");
         userRepository.createUser(user);
         assertTrue(
-                userRepository.usernameExists("roger_lamothe")
+                userRepository.emailExists("some_email@example.org")
         );
     }
 
     @Test
     public void try_to_save_twice_a_user_with_same_email_is_not_possible() {
         String email = randomEmail();
-        User user1 = User.withUsernameEmailAndLocales(
-                randomUserName(),
-                email,
-                "[fr]"
-        );
-        user1.password("password");
-        User user2 = User.withUsernameEmailAndLocales(
-                randomUserName(),
-                email,
-                "[fr]"
-        );
-        user2.password("password");
+        User user1 = User.withEmail(
+                email
+        ).password("password");
+        User user2 = User.withEmail(
+                email
+        ).password("password");
         userRepository.createUser(user1);
         try {
             userRepository.createUser(user2);
@@ -112,37 +111,54 @@ public class Neo4jUserRepositoryTest {
     }
 
     @Test
+    public void creating_a_user_generates_a_user_name(){
+        User user = createAUser();
+        assertNull(user.username());
+        user = userRepository.createUser(
+                createAUser()
+        );
+        assertNotNull(user.username());
+    }
+
+    @Test
     public void try_to_save_twice_a_user_with_same_username_is_not_possible() {
-        User user1 = User.withUsernameEmailAndLocales(
-                "a_user_name",
-                randomEmail(),
-                "[fr]"
-        );
-        user1.password("password");
+        userNameGenerator.setOverride(new UserNameGenerator() {
+            @Override
+            public String generate() {
+                return "same";
+            }
+
+            @Override
+            public void setOverride(UserNameGenerator userNameGenerator) {
+
+            }
+
+            @Override
+            public void reset() {
+
+            }
+        });
+        User user1 = User.withEmail(
+                randomEmail()
+        ).password("password");
         String user2Email = randomEmail();
-        User user2 = User.withUsernameEmailAndLocales(
-                "a_user_name",
-                user2Email,
-                "[fr]"
-        );
-        user2.password("password");
+        User user2 = User.withEmail(
+                user2Email
+        ).password("password");
         userRepository.createUser(user1);
         try {
             userRepository.createUser(user2);
             fail();
         } catch (ExistingUserException e) {
-            assertThat(e.getMessage(), Matchers.is("A user already exist with username or email: " + "a_user_name"));
+            assertThat(e.getMessage(), Matchers.is("A user already exist with username or email: " + "same"));
         }
     }
 
     @Test
     public void user_fields_are_well_saved() {
-        String username = randomUserName();
         String email = randomEmail();
-        User user = User.withUsernameEmailAndLocales(
-                username,
-                email,
-                "[fr]"
+        User user = User.withEmail(
+                email
         ).password("secret");
         userRepository.createUser(user);
         User loadedUser = userRepository.findByEmail(email);
@@ -189,8 +205,11 @@ public class Neo4jUserRepositoryTest {
     @Test
     public void can_find_user_by_user_name() {
         User user = createAUser();
-        userRepository.createUser(user);
-        assertThat(userRepository.findByUsername(user.username()), Matchers.is(user));
+        user = userRepository.createUser(user);
+        assertThat(
+                userRepository.findByUsername(user.username()),
+                is(user)
+        );
     }
 
     @Test
@@ -203,21 +222,13 @@ public class Neo4jUserRepositoryTest {
         }
     }
 
-    private String randomUserName() {
-        return UUID.randomUUID().toString();
-    }
-
     private String randomEmail() {
         return UUID.randomUUID().toString() + "@me.com";
     }
 
     private User createAUser() {
-        User user = User.withUsernameEmailAndLocales(
-                randomUserName(),
-                randomEmail(),
-                "[fr]"
-        );
-        user.password("password");
-        return user;
+        return User.withEmail(
+                randomEmail()
+        ).password("password");
     }
 }

@@ -7,6 +7,7 @@ package org.triple_brain.module.neo4j_user_repository;
 import org.neo4j.rest.graphdb.query.QueryEngine;
 import org.neo4j.rest.graphdb.util.QueryResult;
 import org.triple_brain.module.model.User;
+import org.triple_brain.module.model.UserNameGenerator;
 import org.triple_brain.module.model.UserUris;
 import org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jFriendlyResource;
 import org.triple_brain.module.repository.user.ExistingUserException;
@@ -32,7 +33,7 @@ public class Neo4jUserRepository implements UserRepository {
                             "user." + props.salt + "," +
                             "user." + props.passwordHash;
 
-    static enum props {
+    enum props {
         username,
         email,
         preferredLocales,
@@ -45,13 +46,17 @@ public class Neo4jUserRepository implements UserRepository {
     @Inject
     protected QueryEngine queryEngine;
 
+    @Inject
+    UserNameGenerator userNameGenerator;
+
     @Override
-    public void createUser(User user) {
+    public User createUser(User user) {
         if (emailExists(user.email())) {
             throw new ExistingUserException(
                     user.email()
             );
         }
+        user.setUsername(userNameGenerator.generate());
         if (usernameExists(user.username())) {
             throw new ExistingUserException(
                     user.username()
@@ -80,6 +85,7 @@ public class Neo4jUserRepository implements UserRepository {
                         user.passwordHash()
                 ))
         );
+        return user;
     }
 
     @Override
@@ -148,9 +154,11 @@ public class Neo4jUserRepository implements UserRepository {
         }
         Map<String, Object> result = results.iterator().next();
         URI userUri = URI.create(result.get("user.uri").toString());
-        User user = User.withUsernameEmailAndLocales(
-                UserUris.ownerUserNameFromUri(userUri),
+        User user = User.withEmailAndUsername(
                 result.get("user.email").toString(),
+                UserUris.ownerUserNameFromUri(userUri)
+        );
+        user.setPreferredLocales(
                 result.get("user.preferredLocales").toString()
         );
         setSalt(
