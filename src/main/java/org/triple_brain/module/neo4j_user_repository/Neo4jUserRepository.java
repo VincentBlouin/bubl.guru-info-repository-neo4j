@@ -155,19 +155,19 @@ public class Neo4jUserRepository implements UserRepository {
         Map<String, Object> result = results.iterator().next();
         URI userUri = URI.create(result.get("user.uri").toString());
         User user = User.withEmailAndUsername(
-                result.get("user.email").toString(),
+                result.get("user." + props.email).toString(),
                 UserUris.ownerUserNameFromUri(userUri)
         );
         user.setPreferredLocales(
-                result.get("user.getPreferredLocalesAsString").toString()
-        );
+                result.get("user." + props.preferredLocales).toString()
+                );
         setSalt(
                 user,
-                result.get("user.salt").toString()
+                result.get("user." + props.salt).toString()
         );
         setPasswordHash(
                 user,
-                result.get("user.passwordHash").toString()
+                result.get("user." + props.passwordHash).toString()
         );
         return user;
     }
