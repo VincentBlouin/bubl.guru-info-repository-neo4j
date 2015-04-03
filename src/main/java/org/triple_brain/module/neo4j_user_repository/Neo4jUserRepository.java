@@ -74,7 +74,7 @@ public class Neo4jUserRepository implements UserRepository {
                         props.email.name(),
                         user.email(),
                         props.preferredLocales.name(),
-                        user.preferredLocales(),
+                        user.getPreferredLocalesAsString(),
                         props.creationDate.name(),
                         new Date().getTime(),
                         props.updateTime.name(),
@@ -159,7 +159,7 @@ public class Neo4jUserRepository implements UserRepository {
                 UserUris.ownerUserNameFromUri(userUri)
         );
         user.setPreferredLocales(
-                result.get("user.preferredLocales").toString()
+                result.get("user.getPreferredLocalesAsString").toString()
         );
         setSalt(
                 user,
