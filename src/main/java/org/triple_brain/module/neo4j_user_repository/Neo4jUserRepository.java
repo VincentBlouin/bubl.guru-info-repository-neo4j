@@ -9,6 +9,7 @@ import org.neo4j.rest.graphdb.util.QueryResult;
 import org.triple_brain.module.model.User;
 import org.triple_brain.module.model.UserNameGenerator;
 import org.triple_brain.module.model.UserUris;
+import org.triple_brain.module.model.forget_password.UserForgetPasswordToken;
 import org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jFriendlyResource;
 import org.triple_brain.module.repository.user.ExistingUserException;
 import org.triple_brain.module.repository.user.NonExistingUserException;
@@ -40,7 +41,9 @@ public class Neo4jUserRepository implements UserRepository {
         creationDate,
         updateTime,
         salt,
-        passwordHash
+        passwordHash,
+        token,
+        tokenExpirationDate
     }
 
     @Inject
@@ -148,6 +151,22 @@ public class Neo4jUserRepository implements UserRepository {
         return numberOf != 0;
     }
 
+    @Override
+    public void resetPassword(User user) {
+        URI uri = new UserUris(user.username()).baseUri();
+        queryEngine.query(
+                "START n=node:node_auto_index('uri:" + uri + "') " +
+                        "SET n." + props.salt + "='' " +
+                        "SET n." + props.passwordHash + "=''",
+                map()
+        );
+    }
+
+    @Override
+    public UserForgetPasswordToken getUserForgetPasswordToken() {
+        return null;
+    }
+
     private User userFromResult(QueryResult<Map<String, Object>> results, String identifier) {
         if (!results.iterator().hasNext()) {
             throw new NonExistingUserException(identifier);
@@ -160,7 +179,7 @@ public class Neo4jUserRepository implements UserRepository {
         );
         user.setPreferredLocales(
                 result.get("user." + props.preferredLocales).toString()
-                );
+        );
         setSalt(
                 user,
                 result.get("user." + props.salt).toString()

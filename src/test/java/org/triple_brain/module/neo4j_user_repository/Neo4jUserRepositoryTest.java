@@ -222,6 +222,27 @@ public class Neo4jUserRepositoryTest {
         }
     }
 
+    @Test
+    public void password_is_invalid_after_password_reset(){
+        User user = createAUser();
+        user = userRepository.createUser(user);
+        User loadedUser = userRepository.findByEmail(user.email());
+        assertTrue(loadedUser.hasPassword("password"));
+        userRepository.resetPassword(user);
+        loadedUser = userRepository.findByEmail(user.email());
+        assertFalse(loadedUser.hasPassword("password"));
+    }
+
+    @Test
+    public void resetting_password_nullifies_salt(){
+
+    }
+
+    @Test
+    public void resetting_password_sets_a_token(){
+
+    }
+
     private String randomEmail() {
         return UUID.randomUUID().toString() + "@me.com";
     }
