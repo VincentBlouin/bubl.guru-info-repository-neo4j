@@ -243,6 +243,20 @@ public class Neo4jUserRepositoryTest {
         );
     }
 
+    @Test
+    public void can_change_password(){
+        User user = userRepository.createUser(
+                createAUser()
+        );
+        assertTrue(user.hasPassword("password"));
+        assertFalse(user.hasPassword("new_password"));
+        user.password("new_password");
+        userRepository.changePassword(user);
+        user = userRepository.findByUsername(user.username());
+        assertFalse(user.hasPassword("password"));
+        assertTrue(user.hasPassword("new_password"));
+    }
+
     private String randomEmail() {
         return UUID.randomUUID().toString() + "@me.com";
     }

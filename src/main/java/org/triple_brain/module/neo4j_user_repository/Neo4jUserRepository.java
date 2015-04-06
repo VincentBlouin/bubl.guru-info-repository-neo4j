@@ -193,6 +193,22 @@ public class Neo4jUserRepository implements UserRepository {
         );
     }
 
+    @Override
+    public void changePassword(User user) {
+        URI uri = new UserUris(user.username()).baseUri();
+        queryEngine.query(
+                "START user=node:node_auto_index('uri:" + uri + "') " +
+                        "SET user." + props.salt + "={" + props.salt + "} " +
+                        "SET user." + props.passwordHash + "={" + props.passwordHash + "}",
+                map(
+                        props.salt.name(),
+                        user.salt(),
+                        props.passwordHash.name(),
+                        user.passwordHash()
+                )
+        );
+    }
+
     private User userFromResult(QueryResult<Map<String, Object>> results, String identifier) {
         if (!results.iterator().hasNext()) {
             throw new NonExistingUserException(identifier);
