@@ -3,13 +3,12 @@
  */
 
 package org.triple_brain.module.neo4j_user_repository;
-
 import org.neo4j.rest.graphdb.query.QueryEngine;
 import org.neo4j.rest.graphdb.util.QueryResult;
+import org.parboiled.common.StringUtils;
 import org.triple_brain.module.model.User;
 import org.triple_brain.module.model.UserNameGenerator;
 import org.triple_brain.module.model.UserUris;
-import org.triple_brain.module.model.forget_password.ForgetPasswordTokenGenerator;
 import org.triple_brain.module.model.forget_password.UserForgetPasswordToken;
 import org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jFriendlyResource;
 import org.triple_brain.module.repository.user.ExistingUserException;
@@ -153,7 +152,7 @@ public class Neo4jUserRepository implements UserRepository {
     }
 
     @Override
-    public void generateForgetPasswordToken(User user) {
+    public void generateForgetPasswordToken(User user, UserForgetPasswordToken userForgetPasswordToken) {
         URI uri = new UserUris(user.username()).baseUri();
         queryEngine.query(
                 "START user=node:node_auto_index('uri:" + uri + "') " +
@@ -161,9 +160,9 @@ public class Neo4jUserRepository implements UserRepository {
                         "SET user." + props.changePasswordExpirationDate + "={" + props.changePasswordExpirationDate + "}",
                 map(
                         props.forgetPasswordToken.name(),
-                        ForgetPasswordTokenGenerator.generateToken(),
+                        userForgetPasswordToken.getResetPasswordToken(),
                         props.changePasswordExpirationDate.name(),
-                        ForgetPasswordTokenGenerator.generateTokenExpirationDate().getTime()
+                        userForgetPasswordToken.getResetPasswordExpirationDate().getTime()
                 )
         );
     }
@@ -178,17 +177,17 @@ public class Neo4jUserRepository implements UserRepository {
                 map()
         );
         Map<String, Object> result = results.iterator().next();
-        if(result.get("user." + props.forgetPasswordToken) == null){
+        String forgetPasswordToken = (String) result.get("user." + props.forgetPasswordToken);
+        if(StringUtils.isEmpty(forgetPasswordToken)){
             return UserForgetPasswordToken.empty();
         }
-        String token = result.get("user." + props.forgetPasswordToken).toString();
         Date changePasswordExpirationDate = new Date(
                 Long.valueOf(
                         result.get("user." + props.changePasswordExpirationDate).toString()
                 )
         );
         return UserForgetPasswordToken.withTokenAndExpirationDate(
-                token,
+                forgetPasswordToken,
                 changePasswordExpirationDate
         );
     }
@@ -198,8 +197,10 @@ public class Neo4jUserRepository implements UserRepository {
         URI uri = new UserUris(user.username()).baseUri();
         queryEngine.query(
                 "START user=node:node_auto_index('uri:" + uri + "') " +
-                        "SET user." + props.salt + "={" + props.salt + "} " +
-                        "SET user." + props.passwordHash + "={" + props.passwordHash + "}",
+                        "SET user." + props.salt + "={" + props.salt + "}, " +
+                        "user." + props.passwordHash + "={" + props.passwordHash + "}, " +
+                        "user." + props.forgetPasswordToken + "='', " +
+                        "user." + props.changePasswordExpirationDate + "=''",
                 map(
                         props.salt.name(),
                         user.salt(),

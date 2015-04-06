@@ -234,7 +234,10 @@ public class Neo4jUserRepositoryTest {
         assertTrue(
                 userForgetPasswordToken.isEmpty()
         );
-        userRepository.generateForgetPasswordToken(user);
+        userRepository.generateForgetPasswordToken(
+                user,
+                UserForgetPasswordToken.generate()
+        );
         userForgetPasswordToken = userRepository.getUserForgetPasswordToken(
                 user
         );
@@ -255,6 +258,25 @@ public class Neo4jUserRepositoryTest {
         user = userRepository.findByUsername(user.username());
         assertFalse(user.hasPassword("password"));
         assertTrue(user.hasPassword("new_password"));
+    }
+
+    @Test
+    public void changing_password_nullifies_the_reset_password_token(){
+        User user = userRepository.createUser(
+                createAUser()
+        );
+        userRepository.generateForgetPasswordToken(
+                user,
+                UserForgetPasswordToken.generate()
+        );
+        assertFalse(
+                userRepository.getUserForgetPasswordToken(user).isEmpty()
+        );
+        user.password("new_password");
+        userRepository.changePassword(user);
+        assertTrue(
+                userRepository.getUserForgetPasswordToken(user).isEmpty()
+        );
     }
 
     private String randomEmail() {
