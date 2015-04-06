@@ -14,6 +14,7 @@ import org.neo4j.rest.graphdb.query.QueryEngine;
 import org.triple_brain.module.model.ModelModule;
 import org.triple_brain.module.model.User;
 import org.triple_brain.module.model.UserNameGenerator;
+import org.triple_brain.module.model.forget_password.UserForgetPasswordToken;
 import org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jModule;
 import org.triple_brain.module.neo4j_graph_manipulator.graph.test.Neo4JGraphComponentTest;
 import org.triple_brain.module.repository.user.ExistingUserException;
@@ -223,24 +224,23 @@ public class Neo4jUserRepositoryTest {
     }
 
     @Test
-    public void password_is_invalid_after_password_reset(){
-        User user = createAUser();
-        user = userRepository.createUser(user);
-        User loadedUser = userRepository.findByEmail(user.email());
-        assertTrue(loadedUser.hasPassword("password"));
-        userRepository.resetPassword(user);
-        loadedUser = userRepository.findByEmail(user.email());
-        assertFalse(loadedUser.hasPassword("password"));
-    }
-
-    @Test
-    public void resetting_password_nullifies_salt(){
-
-    }
-
-    @Test
     public void resetting_password_sets_a_token(){
-
+        User user = userRepository.createUser(
+                createAUser()
+        );
+        UserForgetPasswordToken userForgetPasswordToken = userRepository.getUserForgetPasswordToken(
+                user
+        );
+        assertTrue(
+                userForgetPasswordToken.isEmpty()
+        );
+        userRepository.generateForgetPasswordToken(user);
+        userForgetPasswordToken = userRepository.getUserForgetPasswordToken(
+                user
+        );
+        assertFalse(
+                userForgetPasswordToken.isEmpty()
+        );
     }
 
     private String randomEmail() {
