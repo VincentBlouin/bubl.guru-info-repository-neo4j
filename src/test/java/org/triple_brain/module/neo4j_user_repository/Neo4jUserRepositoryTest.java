@@ -14,7 +14,7 @@ import org.neo4j.rest.graphdb.query.QueryEngine;
 import org.triple_brain.module.model.ModelModule;
 import org.triple_brain.module.model.User;
 import org.triple_brain.module.model.UserNameGenerator;
-import org.triple_brain.module.model.forget_password.UserForgetPasswordToken;
+import org.triple_brain.module.model.forgot_password.UserForgotPasswordToken;
 import org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jModule;
 import org.triple_brain.module.neo4j_graph_manipulator.graph.test.Neo4JGraphComponentTest;
 import org.triple_brain.module.repository.user.ExistingUserException;
@@ -228,21 +228,21 @@ public class Neo4jUserRepositoryTest {
         User user = userRepository.createUser(
                 createAUser()
         );
-        UserForgetPasswordToken userForgetPasswordToken = userRepository.getUserForgetPasswordToken(
+        UserForgotPasswordToken userForgotPasswordToken = userRepository.getUserForgetPasswordToken(
                 user
         );
         assertTrue(
-                userForgetPasswordToken.isEmpty()
+                userForgotPasswordToken.isEmpty()
         );
         userRepository.generateForgetPasswordToken(
                 user,
-                UserForgetPasswordToken.generate()
+                UserForgotPasswordToken.generate()
         );
-        userForgetPasswordToken = userRepository.getUserForgetPasswordToken(
+        userForgotPasswordToken = userRepository.getUserForgetPasswordToken(
                 user
         );
         assertFalse(
-                userForgetPasswordToken.isEmpty()
+                userForgotPasswordToken.isEmpty()
         );
     }
 
@@ -267,7 +267,7 @@ public class Neo4jUserRepositoryTest {
         );
         userRepository.generateForgetPasswordToken(
                 user,
-                UserForgetPasswordToken.generate()
+                UserForgotPasswordToken.generate()
         );
         assertFalse(
                 userRepository.getUserForgetPasswordToken(user).isEmpty()
