@@ -160,7 +160,7 @@ public class Neo4jUserRepository implements UserRepository {
                         "SET user." + props.changePasswordExpirationDate + "={" + props.changePasswordExpirationDate + "}",
                 map(
                         props.forgetPasswordToken.name(),
-                        userForgetPasswordToken.getResetPasswordToken(),
+                        userForgetPasswordToken.getToken(),
                         props.changePasswordExpirationDate.name(),
                         userForgetPasswordToken.getResetPasswordExpirationDate().getTime()
                 )
