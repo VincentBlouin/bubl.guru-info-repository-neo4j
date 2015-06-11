@@ -2,18 +2,18 @@
  * Copyright Vincent Blouin under the GPL License version 3
  */
 
-package org.triple_brain.module.neo4j_user_repository;
+package guru.bubl.module.neo4j_user_repository;
 import org.neo4j.rest.graphdb.query.QueryEngine;
 import org.neo4j.rest.graphdb.util.QueryResult;
 import org.parboiled.common.StringUtils;
-import org.triple_brain.module.model.User;
-import org.triple_brain.module.model.UserNameGenerator;
-import org.triple_brain.module.model.UserUris;
-import org.triple_brain.module.model.forgot_password.UserForgotPasswordToken;
-import org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jFriendlyResource;
-import org.triple_brain.module.repository.user.ExistingUserException;
-import org.triple_brain.module.repository.user.NonExistingUserException;
-import org.triple_brain.module.repository.user.UserRepository;
+import guru.bubl.module.model.User;
+import guru.bubl.module.model.UserNameGenerator;
+import guru.bubl.module.model.UserUris;
+import guru.bubl.module.model.forgot_password.UserForgotPasswordToken;
+import guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jFriendlyResource;
+import guru.bubl.module.repository.user.ExistingUserException;
+import guru.bubl.module.repository.user.NonExistingUserException;
+import guru.bubl.module.repository.user.UserRepository;
 
 import javax.inject.Inject;
 import java.lang.reflect.Field;
@@ -21,8 +21,8 @@ import java.net.URI;
 import java.util.Date;
 import java.util.Map;
 
-import static org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.map;
-import static org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.wrap;
+import static guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.map;
+import static guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.wrap;
 
 public class Neo4jUserRepository implements UserRepository {
 

@@ -2,7 +2,7 @@
  * Copyright Vincent Blouin under the GPL License version 3
  */
 
-package org.triple_brain.module.neo4j_user_repository;
+package guru.bubl.module.neo4j_user_repository;
 
 import com.google.inject.Guice;
 import com.google.inject.Inject;
@@ -11,15 +11,15 @@ import org.hamcrest.Matchers;
 import org.junit.*;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.rest.graphdb.query.QueryEngine;
-import org.triple_brain.module.model.ModelModule;
-import org.triple_brain.module.model.User;
-import org.triple_brain.module.model.UserNameGenerator;
-import org.triple_brain.module.model.forgot_password.UserForgotPasswordToken;
-import org.triple_brain.module.neo4j_graph_manipulator.graph.Neo4jModule;
-import org.triple_brain.module.neo4j_graph_manipulator.graph.test.Neo4JGraphComponentTest;
-import org.triple_brain.module.repository.user.ExistingUserException;
-import org.triple_brain.module.repository.user.NonExistingUserException;
-import org.triple_brain.module.repository.user.UserRepository;
+import guru.bubl.module.model.ModelModule;
+import guru.bubl.module.model.User;
+import guru.bubl.module.model.UserNameGenerator;
+import guru.bubl.module.model.forgot_password.UserForgotPasswordToken;
+import guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jModule;
+import guru.bubl.module.neo4j_graph_manipulator.graph.test.Neo4JGraphComponentTest;
+import guru.bubl.module.repository.user.ExistingUserException;
+import guru.bubl.module.repository.user.NonExistingUserException;
+import guru.bubl.module.repository.user.UserRepository;
 
 import java.util.UUID;
 

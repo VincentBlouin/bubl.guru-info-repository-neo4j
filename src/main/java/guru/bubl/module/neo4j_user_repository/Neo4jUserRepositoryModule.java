@@ -2,10 +2,10 @@
  * Copyright Vincent Blouin under the GPL License version 3
  */
 
-package org.triple_brain.module.neo4j_user_repository;
+package guru.bubl.module.neo4j_user_repository;
 
 import com.google.inject.AbstractModule;
-import org.triple_brain.module.repository.user.UserRepository;
+import guru.bubl.module.repository.user.UserRepository;
 
 public class Neo4jUserRepositoryModule extends AbstractModule{
 
