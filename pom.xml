@@ -112,7 +112,6 @@
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-kernel</artifactId>
-            <version>${neo4j.version}</version>
         </dependency>
 
         <dependency>
@@ -120,19 +119,16 @@
             <artifactId>neo4j-kernel</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
-            <version>${neo4j.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-lucene-index</artifactId>
-            <version>${neo4j.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-cypher</artifactId>
-            <version>${neo4j.version}</version>
         </dependency>
 
         <dependency>
