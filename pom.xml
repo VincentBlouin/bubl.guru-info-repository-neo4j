@@ -131,11 +131,6 @@
             <artifactId>neo4j-cypher</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.neo4j</groupId>
-            <artifactId>neo4j-rest-graphdb</artifactId>
-        </dependency>
-
         <!-- Tests -->
         <dependency>
             <groupId>junit</groupId>
