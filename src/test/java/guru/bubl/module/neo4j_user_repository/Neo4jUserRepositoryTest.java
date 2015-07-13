@@ -7,10 +7,6 @@ package guru.bubl.module.neo4j_user_repository;
 import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
-import org.hamcrest.Matchers;
-import org.junit.*;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.rest.graphdb.query.QueryEngine;
 import guru.bubl.module.model.ModelModule;
 import guru.bubl.module.model.User;
 import guru.bubl.module.model.UserNameGenerator;
@@ -20,6 +16,9 @@ import guru.bubl.module.neo4j_graph_manipulator.graph.test.Neo4JGraphComponentTe
 import guru.bubl.module.repository.user.ExistingUserException;
 import guru.bubl.module.repository.user.NonExistingUserException;
 import guru.bubl.module.repository.user.UserRepository;
+import org.hamcrest.Matchers;
+import org.junit.*;
+import org.neo4j.graphdb.GraphDatabaseService;
 
 import java.util.UUID;
 
@@ -43,8 +42,6 @@ public class Neo4jUserRepositoryTest {
     static GraphDatabaseService graphDatabaseService;
 
 
-    static QueryEngine queryEngine;
-
     @BeforeClass
     public static void realBeforeClass() {
         Neo4jModule.clearDb();
@@ -54,7 +51,6 @@ public class Neo4jUserRepositoryTest {
                 new ModelModule()
         );
         graphDatabaseService = injector.getInstance(GraphDatabaseService.class);
-        queryEngine = injector.getInstance(QueryEngine.class);
     }
 
     @Before

@@ -3,9 +3,8 @@
  */
 
 package guru.bubl.module.neo4j_user_repository;
-import org.neo4j.rest.graphdb.query.QueryEngine;
-import org.neo4j.rest.graphdb.util.QueryResult;
-import org.parboiled.common.StringUtils;
+
+import guru.bubl.module.common_utils.NoExRun;
 import guru.bubl.module.model.User;
 import guru.bubl.module.model.UserNameGenerator;
 import guru.bubl.module.model.UserUris;
@@ -14,15 +13,19 @@ import guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jFriendlyResource;
 import guru.bubl.module.repository.user.ExistingUserException;
 import guru.bubl.module.repository.user.NonExistingUserException;
 import guru.bubl.module.repository.user.UserRepository;
+import org.parboiled.common.StringUtils;
 
 import javax.inject.Inject;
 import java.lang.reflect.Field;
 import java.net.URI;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.text.MessageFormat;
 import java.util.Date;
-import java.util.Map;
 
 import static guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.map;
-import static guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.wrap;
 
 public class Neo4jUserRepository implements UserRepository {
 
@@ -47,7 +50,7 @@ public class Neo4jUserRepository implements UserRepository {
     }
 
     @Inject
-    protected QueryEngine queryEngine;
+    protected Connection connection;
 
     @Inject
     UserNameGenerator userNameGenerator;
@@ -65,43 +68,50 @@ public class Neo4jUserRepository implements UserRepository {
                     user.username()
             );
         }
-        queryEngine.query(
-                "create (user:resource {props})",
-                wrap(map(
-                        Neo4jFriendlyResource.props.type.name(),
-                        neo4jType,
-                        Neo4jFriendlyResource.props.uri.name(),
-                        user.id(),
-                        props.username.name(),
-                        user.username(),
-                        props.email.name(),
-                        user.email(),
-                        props.preferredLocales.name(),
-                        user.getPreferredLocalesAsString(),
-                        props.creationDate.name(),
-                        new Date().getTime(),
-                        props.updateTime.name(),
-                        new Date().getTime(),
-                        props.salt.name(),
-                        user.salt(),
-                        props.passwordHash.name(),
-                        user.passwordHash()
-                ))
-        );
+        String query = "create (user:resource {1})";
+        NoExRun.wrap(() -> {
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setObject(
+                    1,
+                    map(
+                            Neo4jFriendlyResource.props.type.name(),
+                            neo4jType,
+                            Neo4jFriendlyResource.props.uri.name(),
+                            user.id(),
+                            props.username.name(),
+                            user.username(),
+                            props.email.name(),
+                            user.email(),
+                            props.preferredLocales.name(),
+                            user.getPreferredLocalesAsString(),
+                            props.creationDate.name(),
+                            new Date().getTime(),
+                            props.updateTime.name(),
+                            new Date().getTime(),
+                            props.salt.name(),
+                            user.salt(),
+                            props.passwordHash.name(),
+                            user.passwordHash()
+                    )
+            );
+            return statement.execute();
+        }).get();
         return user;
     }
 
     @Override
     public User findByUsername(String username) throws NonExistingUserException {
         URI uri = new UserUris(username).baseUri();
-        return userFromResult(
-                queryEngine.query(
-                        "START user=node:node_auto_index('uri:" + uri + "') " +
-                                returnQueryPart,
-                        wrap(map())
-                ),
-                username
+        String query = String.format(
+                "START user=node:node_auto_index('uri:%s') %s",
+                uri,
+                returnQueryPart
         );
+        return NoExRun.wrap(() ->
+                userFromResult(
+                        connection.createStatement().executeQuery(query),
+                        username
+                )).get();
     }
 
     @Override
@@ -109,15 +119,18 @@ public class Neo4jUserRepository implements UserRepository {
         if (email.trim().equals("")) {
             throw new NonExistingUserException("");
         }
-        String query = "START user=node:node_auto_index('email:" + email + "') " +
-                returnQueryPart;
-        return userFromResult(
-                queryEngine.query(
-                        query,
-                        wrap(map())
-                ),
-                email
+        String query = String.format(
+                "START user=node:node_auto_index('email:%s') %s",
+                email,
+                returnQueryPart
         );
+        return NoExRun.wrap(() ->
+                userFromResult(
+                        connection.createStatement().executeQuery(
+                                query
+                        ),
+                        email
+                )).get();
     }
 
     @Override
@@ -126,12 +139,14 @@ public class Neo4jUserRepository implements UserRepository {
             return false;
         }
         URI uri = new UserUris(username).baseUri();
-        QueryResult<Map<String, Object>> result = queryEngine.query(
-                "START n=node:node_auto_index('uri:" + uri + "') " +
-                        "return n." + props.email,
-                wrap(map())
+        String query = String.format(
+                "START n=node:node_auto_index('uri:%s') return n.%s",
+                uri,
+                props.email
         );
-        return result.iterator().hasNext();
+        return NoExRun.wrap(() ->
+                        connection.createStatement().executeQuery(query).next()
+        ).get();
     }
 
     @Override
@@ -139,97 +154,132 @@ public class Neo4jUserRepository implements UserRepository {
         if (email.trim().equals("")) {
             return false;
         }
-        String query = "START n=node:node_auto_index('email:" + email + "') " +
-                "RETURN count(n) as number";
-        QueryResult<Map<String, Object>> result = queryEngine.query(
-                query,
-                map()
+        String query = MessageFormat.format(
+                "START n=node:node_auto_index(''email:{0}'') RETURN count(n) as number",
+                email
         );
-        Integer numberOf = new Integer(
-                result.iterator().next().get("number").toString()
-        );
-        return numberOf != 0;
+        return NoExRun.wrap(() -> {
+            ResultSet rs = connection.createStatement().executeQuery(
+                    query
+            );
+            rs.next();
+            Integer numberOf = new Integer(
+                    rs.getString("number")
+            );
+            return numberOf != 0;
+        }).get();
     }
 
     @Override
     public void generateForgetPasswordToken(User user, UserForgotPasswordToken userForgotPasswordToken) {
         URI uri = new UserUris(user.username()).baseUri();
-        queryEngine.query(
-                "START user=node:node_auto_index('uri:" + uri + "') " +
-                        "SET user." + props.forgetPasswordToken + "={" + props.forgetPasswordToken + "} " +
-                        "SET user." + props.changePasswordExpirationDate + "={" + props.changePasswordExpirationDate + "}",
-                map(
-                        props.forgetPasswordToken.name(),
-                        userForgotPasswordToken.getToken(),
-                        props.changePasswordExpirationDate.name(),
-                        userForgotPasswordToken.getResetPasswordExpirationDate().getTime()
-                )
+        String query = String.format(
+                "START user=node:node_auto_index('uri:%s') SET user.%s={1} SET user.%s={2}",
+                uri,
+                props.forgetPasswordToken,
+                props.changePasswordExpirationDate
         );
+        NoExRun.wrap(() -> {
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setString(
+                    1,
+                    userForgotPasswordToken.getToken()
+            );
+            statement.setLong(
+                    2,
+                    userForgotPasswordToken.getResetPasswordExpirationDate().getTime()
+            );
+            return statement.execute();
+        }).get();
     }
 
     @Override
     public UserForgotPasswordToken getUserForgetPasswordToken(User user) {
         URI uri = new UserUris(user.username()).baseUri();
-        QueryResult<Map<String, Object>> results = queryEngine.query(
-                "START user=node:node_auto_index('uri:" + uri + "') " +
-                        "RETURN user." + props.forgetPasswordToken + ", " +
-                        "user." + props.changePasswordExpirationDate,
-                map()
+        String query = String.format(
+                "START user=node:node_auto_index('uri:%s') RETURN user.%s, user.%s",
+                uri,
+                props.forgetPasswordToken,
+                props.changePasswordExpirationDate
         );
-        Map<String, Object> result = results.iterator().next();
-        String forgetPasswordToken = (String) result.get("user." + props.forgetPasswordToken);
-        if(StringUtils.isEmpty(forgetPasswordToken)){
-            return UserForgotPasswordToken.empty();
-        }
-        Date changePasswordExpirationDate = new Date(
-                Long.valueOf(
-                        result.get("user." + props.changePasswordExpirationDate).toString()
-                )
-        );
-        return UserForgotPasswordToken.withTokenAndExpirationDate(
-                forgetPasswordToken,
-                changePasswordExpirationDate
-        );
+        return NoExRun.wrap(() -> {
+            ResultSet rs = connection.createStatement().executeQuery(
+                    query
+            );
+            rs.next();
+            String forgetPasswordToken = rs.getString(
+                    "user." + props.forgetPasswordToken
+            );
+            if (StringUtils.isEmpty(forgetPasswordToken)) {
+                return UserForgotPasswordToken.empty();
+            }
+            Date changePasswordExpirationDate = new Date(
+                    rs.getLong(
+                            "user." + props.changePasswordExpirationDate
+                    )
+            );
+            return UserForgotPasswordToken.withTokenAndExpirationDate(
+                    forgetPasswordToken,
+                    changePasswordExpirationDate
+            );
+        }).get();
     }
 
     @Override
     public void changePassword(User user) {
         URI uri = new UserUris(user.username()).baseUri();
-        queryEngine.query(
-                "START user=node:node_auto_index('uri:" + uri + "') " +
-                        "SET user." + props.salt + "={" + props.salt + "}, " +
-                        "user." + props.passwordHash + "={" + props.passwordHash + "}, " +
-                        "user." + props.forgetPasswordToken + "='', " +
-                        "user." + props.changePasswordExpirationDate + "=''",
-                map(
-                        props.salt.name(),
-                        user.salt(),
-                        props.passwordHash.name(),
-                        user.passwordHash()
-                )
+        String query = String.format(
+                "START user=node:node_auto_index('uri:%s') " +
+                        "SET user.%s={1}, user.%s={2}, user.%s='', user.%s=''",
+                uri,
+                props.salt,
+                props.passwordHash,
+                props.forgetPasswordToken,
+                props.changePasswordExpirationDate
         );
+        NoExRun.wrap(()->{
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setString(
+                    1,
+                    user.salt()
+            );
+            statement.setString(
+                    2,
+                    user.passwordHash()
+            );
+            return statement.execute();
+        }).get();
     }
 
-    private User userFromResult(QueryResult<Map<String, Object>> results, String identifier) {
-        if (!results.iterator().hasNext()) {
+    private User userFromResult(ResultSet rs, String identifier) throws SQLException{
+        if (!rs.next()) {
             throw new NonExistingUserException(identifier);
         }
-        Map<String, Object> result = results.iterator().next();
-        URI userUri = URI.create(result.get("user.uri").toString());
+        URI userUri = URI.create(
+                rs.getString("user.uri")
+        );
         User user = User.withEmailAndUsername(
-                result.get("user." + props.email).toString(),
+                rs.getString(
+                        "user." + props.email
+                ),
                 UserUris.ownerUserNameFromUri(userUri)
         );
         user.setPreferredLocales(
-                result.get("user." + props.preferredLocales).toString()
+                rs.getString(
+                        "user." + props.preferredLocales
+                )
         );
         setSalt(
                 user,
-                result.get("user." + props.salt).toString()
+                rs.getString(
+                        "user." + props.salt
+                )
         );
         setPasswordHash(
                 user,
-                result.get("user." + props.passwordHash).toString()
+                rs.getString(
+                        "user." + props.passwordHash
+                )
         );
         return user;
     }
