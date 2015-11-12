@@ -85,8 +85,9 @@ public class Neo4jUserRepositoryTest {
     @Test
     public void try_to_save_twice_a_user_with_same_email_is_not_possible() {
         String email = randomEmail();
-        User user1 = User.withEmail(
-                email
+        User user1 = User.withEmailAndUsername(
+                email,
+                randomUsername()
         ).password("password");
         User user2 = User.withEmailAndUsername(
                 email,
@@ -108,12 +109,12 @@ public class Neo4jUserRepositoryTest {
     public void try_to_save_twice_a_user_with_same_username_is_not_possible() {
         User user1 = User.withEmailAndUsername(
                 randomEmail(),
-                "a_user_name"
+                "same"
         ).password("password");
         String user2Email = randomEmail();
         User user2 = User.withEmailAndUsername(
                 user2Email,
-                "a_user_name"
+                "same"
         ).password("password");
         userRepository.createUser(user1);
         try {
