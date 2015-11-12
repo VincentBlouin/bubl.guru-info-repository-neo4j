@@ -6,7 +6,6 @@ package guru.bubl.module.neo4j_user_repository;
 
 import guru.bubl.module.common_utils.NoExRun;
 import guru.bubl.module.model.User;
-import guru.bubl.module.model.UserNameGenerator;
 import guru.bubl.module.model.UserUris;
 import guru.bubl.module.model.forgot_password.UserForgotPasswordToken;
 import guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jFriendlyResource;
@@ -52,9 +51,6 @@ public class Neo4jUserRepository implements UserRepository {
     @Inject
     protected Connection connection;
 
-    @Inject
-    UserNameGenerator userNameGenerator;
-
     @Override
     public User createUser(User user) {
         if (emailExists(user.email())) {
@@ -62,7 +58,6 @@ public class Neo4jUserRepository implements UserRepository {
                     user.email()
             );
         }
-        user.setUsername(userNameGenerator.generate());
         if (usernameExists(user.username())) {
             throw new ExistingUserException(
                     user.username()

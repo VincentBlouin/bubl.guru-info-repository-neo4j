@@ -9,7 +9,6 @@ import com.google.inject.Inject;
 import com.google.inject.Injector;
 import guru.bubl.module.model.ModelModule;
 import guru.bubl.module.model.User;
-import guru.bubl.module.model.UserNameGenerator;
 import guru.bubl.module.model.forgot_password.UserForgotPasswordToken;
 import guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jModule;
 import guru.bubl.module.neo4j_graph_manipulator.graph.test.Neo4JGraphComponentTest;
@@ -36,9 +35,6 @@ public class Neo4jUserRepositoryTest {
     @Inject
     Neo4JGraphComponentTest graphComponentTest;
 
-    @Inject
-    UserNameGenerator userNameGenerator;
-
     static GraphDatabaseService graphDatabaseService;
 
 
@@ -61,7 +57,6 @@ public class Neo4jUserRepositoryTest {
     @After
     public final void after() {
         graphComponentTest.removeWholeGraph();
-        userNameGenerator.reset();
     }
 
     @AfterClass
@@ -77,8 +72,9 @@ public class Neo4jUserRepositoryTest {
                         "roger_lamothe"
                 )
         );
-        User user = User.withEmail(
-                "some_email@example.org"
+        User user = User.withEmailAndUsername(
+                "some_email@example.org",
+                randomUsername()
         ).password("password");
         userRepository.createUser(user);
         assertTrue(
@@ -92,8 +88,9 @@ public class Neo4jUserRepositoryTest {
         User user1 = User.withEmail(
                 email
         ).password("password");
-        User user2 = User.withEmail(
-                email
+        User user2 = User.withEmailAndUsername(
+                email,
+                randomUsername()
         ).password("password");
         userRepository.createUser(user1);
         try {
@@ -108,39 +105,15 @@ public class Neo4jUserRepositoryTest {
     }
 
     @Test
-    public void creating_a_user_generates_a_user_name(){
-        User user = createAUser();
-        assertNull(user.username());
-        user = userRepository.createUser(
-                createAUser()
-        );
-        assertNotNull(user.username());
-    }
-
-    @Test
     public void try_to_save_twice_a_user_with_same_username_is_not_possible() {
-        userNameGenerator.setOverride(new UserNameGenerator() {
-            @Override
-            public String generate() {
-                return "same";
-            }
-
-            @Override
-            public void setOverride(UserNameGenerator userNameGenerator) {
-
-            }
-
-            @Override
-            public void reset() {
-
-            }
-        });
-        User user1 = User.withEmail(
-                randomEmail()
+        User user1 = User.withEmailAndUsername(
+                randomEmail(),
+                "a_user_name"
         ).password("password");
         String user2Email = randomEmail();
-        User user2 = User.withEmail(
-                user2Email
+        User user2 = User.withEmailAndUsername(
+                user2Email,
+                "a_user_name"
         ).password("password");
         userRepository.createUser(user1);
         try {
@@ -154,8 +127,9 @@ public class Neo4jUserRepositoryTest {
     @Test
     public void user_fields_are_well_saved() {
         String email = randomEmail();
-        User user = User.withEmail(
-                email
+        User user = User.withEmailAndUsername(
+                email,
+                randomUsername()
         ).password("secret");
         userRepository.createUser(user);
         User loadedUser = userRepository.findByEmail(email);
@@ -280,8 +254,13 @@ public class Neo4jUserRepositoryTest {
     }
 
     private User createAUser() {
-        return User.withEmail(
-                randomEmail()
+        return User.withEmailAndUsername(
+                randomEmail(),
+                randomUsername()
         ).password("password");
+    }
+
+    private String randomUsername(){
+        return UUID.randomUUID().toString().substring(0, 15);
     }
 }
