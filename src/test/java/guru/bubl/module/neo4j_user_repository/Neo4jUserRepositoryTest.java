@@ -44,7 +44,7 @@ public class Neo4jUserRepositoryTest {
         injector = Guice.createInjector(
                 Neo4jModule.forTestingUsingEmbedded(),
                 new Neo4jUserRepositoryModule(),
-                new ModelModule()
+                ModelModule.forTesting()
         );
         graphDatabaseService = injector.getInstance(GraphDatabaseService.class);
     }
