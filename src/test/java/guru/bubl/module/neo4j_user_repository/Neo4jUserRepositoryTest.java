@@ -19,6 +19,9 @@ import org.hamcrest.Matchers;
 import org.junit.*;
 import org.neo4j.graphdb.GraphDatabaseService;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -195,7 +198,7 @@ public class Neo4jUserRepositoryTest {
     }
 
     @Test
-    public void resetting_password_sets_a_token(){
+    public void resetting_password_sets_a_token() {
         User user = userRepository.createUser(
                 createAUser()
         );
@@ -218,7 +221,7 @@ public class Neo4jUserRepositoryTest {
     }
 
     @Test
-    public void can_change_password(){
+    public void can_change_password() {
         User user = userRepository.createUser(
                 createAUser()
         );
@@ -232,7 +235,7 @@ public class Neo4jUserRepositoryTest {
     }
 
     @Test
-    public void changing_password_nullifies_the_reset_password_token(){
+    public void changing_password_nullifies_the_reset_password_token() {
         User user = userRepository.createUser(
                 createAUser()
         );
@@ -250,6 +253,66 @@ public class Neo4jUserRepositoryTest {
         );
     }
 
+    @Test
+    public void can_update_user_preferred_locale() {
+        User user = createAUser();
+        userRepository.createUser(
+                user
+        );
+        user = userRepository.findByUsername(
+                user.username()
+        );
+        assertThat(
+                user.getPreferredLocales().toString(),
+                is("[]")
+        );
+        List<Locale> preferredLocales = new ArrayList<>();
+        preferredLocales.add(
+                Locale.CANADA_FRENCH
+        );
+        user.setPreferredLocales(preferredLocales);
+        userRepository.updatePreferredLocales(user);
+        user = userRepository.findByUsername(
+                user.username()
+        );
+        assertThat(
+                user.getPreferredLocales().toString(),
+                is("[fr_CA]")
+        );
+    }
+
+    @Test
+    public void updating_locale_only_updates_for_given_user() {
+        User user = createAUser();
+        User anotherUser = createAUser();
+        userRepository.createUser(
+                user
+        );
+        userRepository.createUser(
+                anotherUser
+        );
+        anotherUser = userRepository.findByUsername(
+                anotherUser.username()
+        );
+        assertThat(
+                anotherUser.getPreferredLocales().toString(),
+                is("[]")
+        );
+        List<Locale> preferredLocales = new ArrayList<>();
+        preferredLocales.add(
+                Locale.CANADA_FRENCH
+        );
+        user.setPreferredLocales(preferredLocales);
+        userRepository.updatePreferredLocales(user);
+        anotherUser = userRepository.findByUsername(
+                anotherUser.username()
+        );
+        assertThat(
+                anotherUser.getPreferredLocales().toString(),
+                is("[]")
+        );
+    }
+
     private String randomEmail() {
         return UUID.randomUUID().toString() + "@me.com";
     }
@@ -261,7 +324,7 @@ public class Neo4jUserRepositoryTest {
         ).password("password");
     }
 
-    private String randomUsername(){
+    private String randomUsername() {
         return UUID.randomUUID().toString().substring(0, 15);
     }
 }

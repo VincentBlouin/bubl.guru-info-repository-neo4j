@@ -23,6 +23,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
 import static guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.map;
 
@@ -241,6 +243,24 @@ public class Neo4jUserRepository implements UserRepository {
             statement.setString(
                     2,
                     user.passwordHash()
+            );
+            return statement.execute();
+        }).get();
+    }
+
+    @Override
+    public void updatePreferredLocales(User user) {
+        String query = String.format(
+                "START user=node:node_auto_index('uri:%s') " +
+                        "SET user.%s={1}",
+                user.id(),
+                props.preferredLocales
+        );
+        NoExRun.wrap(()->{
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setString(
+                    1,
+                    user.getPreferredLocalesAsString()
             );
             return statement.execute();
         }).get();
