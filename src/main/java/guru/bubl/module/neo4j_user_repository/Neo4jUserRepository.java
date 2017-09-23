@@ -23,8 +23,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.util.Date;
-import java.util.List;
-import java.util.Locale;
 
 import static guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.map;
 
