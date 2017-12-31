@@ -4,7 +4,7 @@
 
 package guru.bubl.module.neo4j_user_repository;
 
-import guru.bubl.module.common_utils.NoExRun;
+import guru.bubl.module.common_utils.NoEx;
 import guru.bubl.module.model.User;
 import guru.bubl.module.model.UserUris;
 import guru.bubl.module.model.forgot_password.UserForgotPasswordToken;
@@ -64,7 +64,7 @@ public class Neo4jUserRepository implements UserRepository {
             );
         }
         String query = "create (user:resource {1})";
-        NoExRun.wrap(() -> {
+        NoEx.wrap(() -> {
             PreparedStatement statement = connection.prepareStatement(query);
             statement.setObject(
                     1,
@@ -102,7 +102,7 @@ public class Neo4jUserRepository implements UserRepository {
                 uri,
                 returnQueryPart
         );
-        return NoExRun.wrap(() ->
+        return NoEx.wrap(() ->
                 userFromResult(
                         connection.createStatement().executeQuery(query),
                         username
@@ -119,7 +119,7 @@ public class Neo4jUserRepository implements UserRepository {
                 email,
                 returnQueryPart
         );
-        return NoExRun.wrap(() ->
+        return NoEx.wrap(() ->
                 userFromResult(
                         connection.createStatement().executeQuery(
                                 query
@@ -139,7 +139,7 @@ public class Neo4jUserRepository implements UserRepository {
                 uri,
                 props.email
         );
-        return NoExRun.wrap(() ->
+        return NoEx.wrap(() ->
                         connection.createStatement().executeQuery(query).next()
         ).get();
     }
@@ -153,7 +153,7 @@ public class Neo4jUserRepository implements UserRepository {
                 "START n=node:node_auto_index(''email:{0}'') RETURN count(n) as number",
                 email
         );
-        return NoExRun.wrap(() -> {
+        return NoEx.wrap(() -> {
             ResultSet rs = connection.createStatement().executeQuery(
                     query
             );
@@ -174,7 +174,7 @@ public class Neo4jUserRepository implements UserRepository {
                 props.forgetPasswordToken,
                 props.changePasswordExpirationDate
         );
-        NoExRun.wrap(() -> {
+        NoEx.wrap(() -> {
             PreparedStatement statement = connection.prepareStatement(query);
             statement.setString(
                     1,
@@ -197,7 +197,7 @@ public class Neo4jUserRepository implements UserRepository {
                 props.forgetPasswordToken,
                 props.changePasswordExpirationDate
         );
-        return NoExRun.wrap(() -> {
+        return NoEx.wrap(() -> {
             ResultSet rs = connection.createStatement().executeQuery(
                     query
             );
@@ -232,7 +232,7 @@ public class Neo4jUserRepository implements UserRepository {
                 props.forgetPasswordToken,
                 props.changePasswordExpirationDate
         );
-        NoExRun.wrap(()->{
+        NoEx.wrap(()->{
             PreparedStatement statement = connection.prepareStatement(query);
             statement.setString(
                     1,
@@ -254,7 +254,7 @@ public class Neo4jUserRepository implements UserRepository {
                 user.id(),
                 props.preferredLocales
         );
-        NoExRun.wrap(()->{
+        NoEx.wrap(()->{
             PreparedStatement statement = connection.prepareStatement(query);
             statement.setString(
                     1,
