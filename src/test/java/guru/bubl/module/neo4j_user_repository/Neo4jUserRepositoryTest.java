@@ -8,6 +8,7 @@ import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import guru.bubl.module.model.ModelModule;
+import guru.bubl.module.model.ModelTestModule;
 import guru.bubl.module.model.User;
 import guru.bubl.module.model.forgot_password.UserForgotPasswordToken;
 import guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jModule;
@@ -47,7 +48,8 @@ public class Neo4jUserRepositoryTest {
         injector = Guice.createInjector(
                 Neo4jModule.forTestingUsingEmbedded(),
                 new Neo4jUserRepositoryModule(),
-                ModelModule.forTesting()
+                ModelModule.forTesting(),
+                new ModelTestModule()
         );
         graphDatabaseService = injector.getInstance(GraphDatabaseService.class);
     }
