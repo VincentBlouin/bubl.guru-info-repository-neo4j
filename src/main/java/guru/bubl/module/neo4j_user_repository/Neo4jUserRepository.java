@@ -9,6 +9,7 @@ import guru.bubl.module.model.User;
 import guru.bubl.module.model.UserUris;
 import guru.bubl.module.model.forgot_password.UserForgotPasswordToken;
 import guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jFriendlyResource;
+import guru.bubl.module.neo4j_graph_manipulator.graph.search.Neo4jGraphSearch;
 import guru.bubl.module.repository.user.ExistingUserException;
 import guru.bubl.module.repository.user.NonExistingUserException;
 import guru.bubl.module.repository.user.UserRepository;
@@ -22,7 +23,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import static guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.map;
 
@@ -140,7 +143,7 @@ public class Neo4jUserRepository implements UserRepository {
                 props.email
         );
         return NoEx.wrap(() ->
-                        connection.createStatement().executeQuery(query).next()
+                connection.createStatement().executeQuery(query).next()
         ).get();
     }
 
@@ -232,7 +235,7 @@ public class Neo4jUserRepository implements UserRepository {
                 props.forgetPasswordToken,
                 props.changePasswordExpirationDate
         );
-        NoEx.wrap(()->{
+        NoEx.wrap(() -> {
             PreparedStatement statement = connection.prepareStatement(query);
             statement.setString(
                     1,
@@ -254,7 +257,7 @@ public class Neo4jUserRepository implements UserRepository {
                 user.id(),
                 props.preferredLocales
         );
-        NoEx.wrap(()->{
+        NoEx.wrap(() -> {
             PreparedStatement statement = connection.prepareStatement(query);
             statement.setString(
                     1,
@@ -264,7 +267,29 @@ public class Neo4jUserRepository implements UserRepository {
         }).get();
     }
 
-    private User userFromResult(ResultSet rs, String identifier) throws SQLException{
+    public List<User> searchUsers(String searchTerm, User user) {
+        String query = String.format(
+                "START user=node:node_auto_index('uri:(%s*) AND type:user') " +
+                "RETURN user.uri as uri",
+                UserUris.BASE_URI + Neo4jGraphSearch.formatSearchTerm(searchTerm)
+        );
+        List<User> users = new ArrayList<>();
+        return NoEx.wrap(() -> {
+            ResultSet rs = connection.createStatement().executeQuery(query);
+            while (rs.next()) {
+                users.add(
+                        User.withUsername(
+                                UserUris.ownerUserNameFromUri(
+                                        URI.create(rs.getString("uri"))
+                                )
+                        )
+                );
+            }
+            return users;
+        }).get();
+    }
+
+    private User userFromResult(ResultSet rs, String identifier) throws SQLException {
         if (!rs.next()) {
             throw new NonExistingUserException(identifier);
         }
