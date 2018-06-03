@@ -27,9 +27,6 @@ public class FriendManagerNeo4j implements FriendManager {
     @Inject
     Connection connection;
 
-    @Inject
-    UserRepository userRepository;
-
     private User user;
 
     @AssistedInject
