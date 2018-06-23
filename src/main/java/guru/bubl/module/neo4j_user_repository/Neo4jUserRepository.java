@@ -8,8 +8,8 @@ import guru.bubl.module.common_utils.NoEx;
 import guru.bubl.module.model.User;
 import guru.bubl.module.model.UserUris;
 import guru.bubl.module.model.forgot_password.UserForgotPasswordToken;
-import guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jFriendlyResource;
-import guru.bubl.module.neo4j_graph_manipulator.graph.search.Neo4jGraphSearch;
+import guru.bubl.module.neo4j_graph_manipulator.graph.FriendlyResourceNeo4j;
+import guru.bubl.module.neo4j_graph_manipulator.graph.search.GraphSearchNeo4j;
 import guru.bubl.module.repository.user.ExistingUserException;
 import guru.bubl.module.repository.user.NonExistingUserException;
 import guru.bubl.module.repository.user.UserRepository;
@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import static guru.bubl.module.neo4j_graph_manipulator.graph.Neo4jRestApiUtils.map;
+import static guru.bubl.module.neo4j_graph_manipulator.graph.RestApiUtilsNeo4j.map;
 
 public class Neo4jUserRepository implements UserRepository {
 
@@ -72,9 +72,9 @@ public class Neo4jUserRepository implements UserRepository {
             statement.setObject(
                     1,
                     map(
-                            Neo4jFriendlyResource.props.type.name(),
+                            FriendlyResourceNeo4j.props.type.name(),
                             neo4jType,
-                            Neo4jFriendlyResource.props.uri.name(),
+                            FriendlyResourceNeo4j.props.uri.name(),
                             user.id(),
                             props.username.name(),
                             user.username(),
@@ -271,7 +271,7 @@ public class Neo4jUserRepository implements UserRepository {
         String query = String.format(
                 "START user=node:node_auto_index('uri:(%s*) AND type:user') " +
                 "RETURN user.uri as uri",
-                UserUris.BASE_URI + Neo4jGraphSearch.formatSearchTerm(searchTerm)
+                UserUris.BASE_URI + GraphSearchNeo4j.formatSearchTerm(searchTerm)
         );
         List<User> users = new ArrayList<>();
         return NoEx.wrap(() -> {
