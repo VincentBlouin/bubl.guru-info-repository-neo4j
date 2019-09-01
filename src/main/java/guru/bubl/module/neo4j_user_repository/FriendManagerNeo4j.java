@@ -7,25 +7,26 @@ package guru.bubl.module.neo4j_user_repository;
 import com.google.inject.Inject;
 import com.google.inject.assistedinject.Assisted;
 import com.google.inject.assistedinject.AssistedInject;
-import guru.bubl.module.common_utils.NoEx;
 import guru.bubl.module.model.User;
 import guru.bubl.module.model.UserUris;
 import guru.bubl.module.model.friend.FriendManager;
 import guru.bubl.module.model.friend.FriendPojo;
 import guru.bubl.module.model.friend.FriendStatus;
-import guru.bubl.module.repository.user.UserRepository;
 import org.apache.commons.lang.RandomStringUtils;
+import org.neo4j.driver.v1.Record;
+import org.neo4j.driver.v1.Session;
+import org.neo4j.driver.v1.StatementResult;
 
 import java.net.URI;
-import java.sql.Connection;
-import java.sql.ResultSet;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.neo4j.driver.v1.Values.parameters;
 
 public class FriendManagerNeo4j implements FriendManager {
 
     @Inject
-    Connection connection;
+    Session session;
 
     private User user;
 
@@ -43,129 +44,122 @@ public class FriendManagerNeo4j implements FriendManager {
                 30
         );
         FriendStatus friendStatus = this.getStatusWithUser(newFriend);
-        if(friendStatus == FriendStatus.waitingForYourAnswer){
+        if (friendStatus == FriendStatus.waitingForYourAnswer) {
             this.confirm(newFriend);
             return null;
         }
-        if(friendStatus != FriendStatus.none){
+        if (friendStatus != FriendStatus.none) {
             return null;
         }
-        return NoEx.wrap(() -> {
-            String query = String.format("START user=node:node_auto_index('uri:%s') " +
-                            "with user " +
-                            "START otherUser=node:node_auto_index('uri:%s') " +
-                            "CREATE UNIQUE (user)-[friendship:friend]->(otherUser) " +
-                            "SET friendship.status='%s', " +
-                            "friendship.confirmToken='%s'",
-                    user.id(),
-                    newFriend.id(),
-                    FriendStatus.waiting,
-                    confirmToken
-            );
-            connection.createStatement().execute(query);
-            return confirmToken;
-        }).get();
+        session.run(
+                "MATCH(user:Resource{uri:$uri}), (otherUser:Resource{uri:$friendUri}) CREATE UNIQUE (user)-[friendship:friend]->(otherUser) SET friendship.status=$status, friendship.confirmToken=$confirmToken",
+                parameters(
+                        "uri", user.id(),
+                        "friendUri", newFriend.id(),
+                        "status", FriendStatus.waiting.name(),
+                        "confirmToken", confirmToken
+                )
+        );
+        return confirmToken;
     }
 
     @Override
     public FriendManager confirm(User newFriend) {
-        return NoEx.wrap(() -> {
-            String query = String.format("START user=node:node_auto_index('uri:%s') " +
-                            "with user " +
-                            "START newFriend=node:node_auto_index('uri:%s') " +
-                            "MATCH user<-[friendship:friend]-newFriend " +
-                            "SET friendship.status='%s' ",
-                    user.id(),
-                    newFriend.id(),
-                    FriendStatus.confirmed
-            );
-            connection.createStatement().executeQuery(query);
-            return this;
-        }).get();
+        session.run(
+                "MATCH(user:Resource{uri:$uri}) WITH user " +
+                        "MATCH(newFriend:Resource{uri:$friendUri}), " +
+                        "(user)<-[friendship:friend]-(newFriend) " +
+                        "SET friendship.status=$status",
+                parameters(
+                        "uri", user.id(),
+                        "friendUri", newFriend.id(),
+                        "status", FriendStatus.confirmed.name()
+                )
+        );
+        return this;
     }
 
     @Override
     public Boolean confirmWithToken(User newFriend, String confirmToken) {
-        return NoEx.wrap(() -> {
-            String query = String.format("START user=node:node_auto_index('uri:%s') " +
-                            "with user " +
-                            "START newFriend=node:node_auto_index('uri:%s') " +
-                            "MATCH user<-[friendship:friend]-newFriend " +
-                            "WHERE friendship.confirmToken='%s' " +
-                            "SET friendship.status='%s' " +
-                            "RETURN friendship.status ",
-                    user.id(),
-                    newFriend.id(),
-                    confirmToken,
-                    FriendStatus.confirmed
-            );
-            ResultSet rs = connection.createStatement().executeQuery(query);
-            return rs.next();
-        }).get();
+        return session.run(
+                "MATCH(user:Resource{uri:$uri}) WITH user " +
+                        "MATCH(newFriend:Resource{uri:$friendUri}), " +
+                        "(user)<-[friendship:friend]-(newFriend) " +
+                        "WHERE friendship.confirmToken=$confirmToken " +
+                        "SET friendship.status=$status " +
+                        "RETURN friendship.status ",
+                parameters(
+                        "uri", user.id(),
+                        "friendUri", newFriend.id(),
+                        "confirmToken", confirmToken,
+                        "status", FriendStatus.confirmed.name()
+                )
+        ).hasNext();
     }
 
     @Override
     public Map<URI, FriendPojo> list() {
         Map<URI, FriendPojo> friends = new HashMap<>();
-        return NoEx.wrap(() -> {
-            String query = String.format("START user=node:node_auto_index('uri:%s') " +
-                            "MATCH user-[friendship:friend]-friend " +
-                            "RETURN friend.uri as uri, " +
-                            "friendship.status as status",
-                    user.id()
+        String query = "MATCH(user:Resource{uri:$uri}), " +
+                "(user)-[friendship:friend]-(friend) " +
+                "RETURN friend.uri as uri, friendship.status as status";
+        StatementResult sr = session.run(
+                query,
+                parameters(
+                        "uri", user.id()
+                )
+        );
+        while (sr.hasNext()) {
+            Record record = sr.next();
+            URI uri = URI.create(record.get("uri").asString());
+            friends.put(
+                    uri,
+                    new FriendPojo(
+                            UserUris.ownerUserNameFromUri(
+                                    uri
+                            ),
+                            FriendStatus.valueOf(record.get("status").asString())
+                    )
             );
-            ResultSet rs = connection.createStatement().executeQuery(query);
-            while (rs.next()) {
-                URI uri = URI.create(rs.getString("uri"));
-                friends.put(
-                        uri,
-                        new FriendPojo(
-                                UserUris.ownerUserNameFromUri(
-                                        uri
-                                ),
-                                FriendStatus.valueOf(rs.getString("status"))
-                        )
-                );
-            }
-            return friends;
-        }).get();
+        }
+        return friends;
     }
 
     @Override
     public FriendStatus getStatusWithUser(User otherUser) {
-        return NoEx.wrap(() -> {
-            String query = String.format("START user=node:node_auto_index('uri:%s') " +
-                            "with user " +
-                            "START friend=node:node_auto_index('uri:%s') " +
-                            "OPTIONAL MATCH (user)-[friendRequest:friend]->(friend) " +
-                            "OPTIONAL MATCH (friend)-[friendInvitation:friend]->(user) " +
-                            "RETURN friendRequest.status as friendRequestStatus, " +
-                            "friendInvitation.status as friendInvitationStatus",
-                    user.id(),
-                    otherUser.id()
-            );
-            ResultSet rs = connection.createStatement().executeQuery(query);
-            if (!rs.next()) {
-                return FriendStatus.none;
-            }
-            Boolean isRequestUser = rs.getObject("friendRequestStatus") != null;
+        String query = "MATCH(user:Resource{uri:$uri}) " +
+                "WITH user " +
+                "MATCH (friend:Resource{uri:$friendUri}) " +
+                "OPTIONAL MATCH (user)-[friendRequest:friend]->(friend) " +
+                "OPTIONAL MATCH (friend)-[friendInvitation:friend]->(user) " +
+                "RETURN friendRequest.status as friendRequestStatus, " +
+                "friendInvitation.status as friendInvitationStatus";
+        StatementResult sr = session.run(
+                query,
+                parameters(
+                        "uri", user.id(),
+                        "friendUri", otherUser.id()
+                )
+        );
+        if (!sr.hasNext()) {
+            return FriendStatus.none;
+        }
+        Record record = sr.single();
+        Boolean isRequestUser = record.get("friendRequestStatus").asObject() != null;
+        if (!isRequestUser && record.get("friendInvitationStatus").asObject() == null) {
+            return FriendStatus.none;
+        }
+        FriendStatus friendStatus = isRequestUser ?
+                FriendStatus.valueOf(
+                        record.get("friendRequestStatus").asString()
+                ) :
+                FriendStatus.valueOf(
+                        record.get("friendInvitationStatus").asString()
+                );
 
-            if (!isRequestUser && rs.getObject("friendInvitationStatus") == null) {
-                return FriendStatus.none;
-            }
-
-            FriendStatus friendStatus = isRequestUser ?
-                    FriendStatus.valueOf(
-                            rs.getString("friendRequestStatus")
-                    ) :
-                    FriendStatus.valueOf(
-                            rs.getString("friendInvitationStatus")
-                    );
-
-            if (friendStatus == FriendStatus.waiting && !isRequestUser) {
-                return FriendStatus.waitingForYourAnswer;
-            }
-            return friendStatus;
-        }).get();
+        if (friendStatus == FriendStatus.waiting && !isRequestUser) {
+            return FriendStatus.waitingForYourAnswer;
+        }
+        return friendStatus;
     }
 }

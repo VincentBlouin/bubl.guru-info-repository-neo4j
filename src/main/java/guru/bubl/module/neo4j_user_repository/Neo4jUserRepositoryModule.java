@@ -15,7 +15,7 @@ public class Neo4jUserRepositoryModule extends AbstractModule{
     @Override
     protected void configure()
     {
-        bind(UserRepository.class).to(Neo4jUserRepository.class);
+        bind(UserRepository.class).to(UserRepositoryNeo4j.class);
         FactoryModuleBuilder factoryModuleBuilder = new FactoryModuleBuilder();
         install(factoryModuleBuilder
                 .implement(FriendManager.class, FriendManagerNeo4j.class)

@@ -111,19 +111,7 @@
 
         <dependency>
             <groupId>org.neo4j</groupId>
-            <artifactId>neo4j-kernel</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.neo4j</groupId>
-            <artifactId>neo4j-kernel</artifactId>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.neo4j</groupId>
-            <artifactId>neo4j-lucene-index</artifactId>
+            <artifactId>neo4j</artifactId>
         </dependency>
 
         <dependency>
@@ -158,7 +146,18 @@
             <version>2.0.2-beta</version>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-kernel</artifactId>
+            <version>3.5.8</version>
+            <type>test-jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-io</artifactId>
+            <version>3.5.8</version>
+            <type>test-jar</type>
+        </dependency>
     </dependencies>
 
 
