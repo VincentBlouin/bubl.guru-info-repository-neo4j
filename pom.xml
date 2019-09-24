@@ -149,13 +149,13 @@
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-kernel</artifactId>
-            <version>3.5.8</version>
+            <version>3.5.11</version>
             <type>test-jar</type>
         </dependency>
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-io</artifactId>
-            <version>3.5.8</version>
+            <version>3.5.11</version>
             <type>test-jar</type>
         </dependency>
     </dependencies>
