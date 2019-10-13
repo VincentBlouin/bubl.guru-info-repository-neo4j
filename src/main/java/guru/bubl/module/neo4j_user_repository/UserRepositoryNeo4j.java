@@ -12,6 +12,7 @@ import guru.bubl.module.repository.user.ExistingUserException;
 import guru.bubl.module.repository.user.NonExistingUserException;
 import guru.bubl.module.repository.user.UserRepository;
 import org.apache.commons.lang.StringUtils;
+import org.neo4j.driver.v1.Driver;
 import org.neo4j.driver.v1.Record;
 import org.neo4j.driver.v1.Session;
 import org.neo4j.driver.v1.StatementResult;
@@ -49,7 +50,7 @@ public class UserRepositoryNeo4j implements UserRepository {
     }
 
     @Inject
-    protected Session session;
+    protected Driver driver;
 
     @Override
     public User createUser(User user) {
@@ -63,49 +64,53 @@ public class UserRepositoryNeo4j implements UserRepository {
                     user.username()
             );
         }
-        session.run(
-                "CREATE(:Resource:User $user)",
-                parameters(
-                        "user",
-                        parameters(
-                                FriendlyResourceNeo4j.props.uri.name(),
-                                user.id(),
-                                props.username.name(),
-                                user.username(),
-                                props.email.name(),
-                                user.email(),
-                                props.preferredLocales.name(),
-                                user.getPreferredLocalesAsString(),
-                                props.creationDate.name(),
-                                new Date().getTime(),
-                                props.updateTime.name(),
-                                new Date().getTime(),
-                                props.salt.name(),
-                                user.salt(),
-                                props.passwordHash.name(),
-                                user.passwordHash()
-                        )
-                )
-        );
-        return user;
+        try (Session session = driver.session()) {
+            session.run(
+                    "CREATE(:Resource:User $user)",
+                    parameters(
+                            "user",
+                            parameters(
+                                    FriendlyResourceNeo4j.props.uri.name(),
+                                    user.id(),
+                                    props.username.name(),
+                                    user.username(),
+                                    props.email.name(),
+                                    user.email(),
+                                    props.preferredLocales.name(),
+                                    user.getPreferredLocalesAsString(),
+                                    props.creationDate.name(),
+                                    new Date().getTime(),
+                                    props.updateTime.name(),
+                                    new Date().getTime(),
+                                    props.salt.name(),
+                                    user.salt(),
+                                    props.passwordHash.name(),
+                                    user.passwordHash()
+                            )
+                    )
+            );
+            return user;
+        }
     }
 
     @Override
     public User findByUsername(String username) throws NonExistingUserException {
         URI uri = new UserUris(username).baseUri();
-        StatementResult sr = session.run(
-                String.format(
-                        "MATCH(user:Resource{uri:$uri}) %s",
-                        returnQueryPart
-                ),
-                parameters(
-                        "uri", uri.toString()
-                )
-        );
-        return userFromResult(
-                sr,
-                username
-        );
+        try (Session session = driver.session()) {
+            StatementResult sr = session.run(
+                    String.format(
+                            "MATCH(user:Resource{uri:$uri}) %s",
+                            returnQueryPart
+                    ),
+                    parameters(
+                            "uri", uri.toString()
+                    )
+            );
+            return userFromResult(
+                    sr,
+                    username
+            );
+        }
     }
 
     @Override
@@ -113,19 +118,21 @@ public class UserRepositoryNeo4j implements UserRepository {
         if (email.trim().equals("")) {
             throw new NonExistingUserException("");
         }
-        StatementResult sr = session.run(
-                String.format(
-                        "MATCH(user:User{email:$email}) %s",
-                        returnQueryPart
-                ),
-                parameters(
-                        "email", email
-                )
-        );
-        return userFromResult(
-                sr,
-                email
-        );
+        try (Session session = driver.session()) {
+            StatementResult sr = session.run(
+                    String.format(
+                            "MATCH(user:User{email:$email}) %s",
+                            returnQueryPart
+                    ),
+                    parameters(
+                            "email", email
+                    )
+            );
+            return userFromResult(
+                    sr,
+                    email
+            );
+        }
     }
 
     @Override
@@ -134,12 +141,14 @@ public class UserRepositoryNeo4j implements UserRepository {
             return false;
         }
         URI uri = new UserUris(username).baseUri();
-        return session.run(
-                "MATCH(n:Resource{uri:$uri}) RETURN n.email",
-                parameters(
-                        "uri", uri.toString()
-                )
-        ).hasNext();
+        try (Session session = driver.session()) {
+            return session.run(
+                    "MATCH(n:Resource{uri:$uri}) RETURN n.email",
+                    parameters(
+                            "uri", uri.toString()
+                    )
+            ).hasNext();
+        }
     }
 
     @Override
@@ -147,14 +156,16 @@ public class UserRepositoryNeo4j implements UserRepository {
         if (email.trim().equals("")) {
             return false;
         }
-        Record record = session.run(
-                "MATCH(n:User{email:$email}) RETURN count(n) as number",
-                parameters(
-                        "email", email
-                )
-        ).single();
-        Integer numberOf = record.get("number").asInt();
-        return numberOf != 0;
+        try (Session session = driver.session()) {
+            Record record = session.run(
+                    "MATCH(n:User{email:$email}) RETURN count(n) as number",
+                    parameters(
+                            "email", email
+                    )
+            ).single();
+            Integer numberOf = record.get("number").asInt();
+            return numberOf != 0;
+        }
     }
 
     @Override
@@ -165,14 +176,16 @@ public class UserRepositoryNeo4j implements UserRepository {
                 props.forgetPasswordToken,
                 props.changePasswordExpirationDate
         );
-        session.run(
-                query,
-                parameters(
-                        "uri", uri.toString(),
-                        "token", userForgotPasswordToken.getToken(),
-                        "expirationDate", userForgotPasswordToken.getResetPasswordExpirationDate().getTime()
-                )
-        );
+        try (Session session = driver.session()) {
+            session.run(
+                    query,
+                    parameters(
+                            "uri", uri.toString(),
+                            "token", userForgotPasswordToken.getToken(),
+                            "expirationDate", userForgotPasswordToken.getResetPasswordExpirationDate().getTime()
+                    )
+            );
+        }
     }
 
     @Override
@@ -183,78 +196,86 @@ public class UserRepositoryNeo4j implements UserRepository {
                 props.forgetPasswordToken,
                 props.changePasswordExpirationDate
         );
-        Record record = session.run(
-                query,
-                parameters(
-                        "uri", uri.toString()
-                )
-        ).single();
-        String forgetPasswordToken = record.get(
-                "user." + props.forgetPasswordToken
-        ).asString();
-        if (forgetPasswordToken.equals("null")) {
-            return UserForgotPasswordToken.empty();
-        }
+        try (Session session = driver.session()) {
+            Record record = session.run(
+                    query,
+                    parameters(
+                            "uri", uri.toString()
+                    )
+            ).single();
+            String forgetPasswordToken = record.get(
+                    "user." + props.forgetPasswordToken
+            ).asString();
+            if (forgetPasswordToken.equals("null")) {
+                return UserForgotPasswordToken.empty();
+            }
 
-        Date changePasswordExpirationDate = record.get(
-                "user." + props.changePasswordExpirationDate
-        ).asObject() == null ? null : new Date(
-                record.get(
-                        "user." + props.changePasswordExpirationDate
-                ).asLong()
-        );
-        return UserForgotPasswordToken.withTokenAndExpirationDate(
-                forgetPasswordToken,
-                changePasswordExpirationDate
-        );
+            Date changePasswordExpirationDate = record.get(
+                    "user." + props.changePasswordExpirationDate
+            ).asObject() == null ? null : new Date(
+                    record.get(
+                            "user." + props.changePasswordExpirationDate
+                    ).asLong()
+            );
+            return UserForgotPasswordToken.withTokenAndExpirationDate(
+                    forgetPasswordToken,
+                    changePasswordExpirationDate
+            );
+        }
     }
 
     @Override
     public void changePassword(User user) {
         URI uri = new UserUris(user.username()).baseUri();
-        session.run(
-                "MATCH (user:Resource{uri:$uri}) SET user.salt=$salt, user.passwordHash=$passwordHash, user.forgetPasswordToken=$token, user.changePasswordExpirationDate=$expirationDate",
-                parameters(
-                        "uri", uri.toString(),
-                        "salt", user.salt(),
-                        "passwordHash", user.passwordHash(),
-                        "token", null,
-                        "expirationDate", null
-                )
-        );
+        try (Session session = driver.session()) {
+            session.run(
+                    "MATCH (user:Resource{uri:$uri}) SET user.salt=$salt, user.passwordHash=$passwordHash, user.forgetPasswordToken=$token, user.changePasswordExpirationDate=$expirationDate",
+                    parameters(
+                            "uri", uri.toString(),
+                            "salt", user.salt(),
+                            "passwordHash", user.passwordHash(),
+                            "token", null,
+                            "expirationDate", null
+                    )
+            );
+        }
     }
 
     @Override
     public void updatePreferredLocales(User user) {
-        session.run(
-                "MATCH(user:Resource{uri:$uri}) SET user.preferredLocales=$locale",
-                parameters(
-                        "uri", user.id(),
-                        "locale", user.getPreferredLocalesAsString()
-                )
-        );
+        try (Session session = driver.session()) {
+            session.run(
+                    "MATCH(user:Resource{uri:$uri}) SET user.preferredLocales=$locale",
+                    parameters(
+                            "uri", user.id(),
+                            "locale", user.getPreferredLocalesAsString()
+                    )
+            );
+        }
     }
 
     public List<User> searchUsers(String searchTerm, User user) {
         List<User> users = new ArrayList<>();
-        StatementResult sr = session.run(
-                "CALL db.index.fulltext.queryNodes('username', $username) YIELD node RETURN node.uri as uri",
-                parameters(
-                        "username",
-                        searchTerm + "*"
-                )
-        );
-        while (sr.hasNext()) {
-            Record record = sr.next();
-            users.add(
-                    User.withUsername(
-                            UserUris.ownerUserNameFromUri(
-                                    URI.create(record.get("uri").asString())
-                            )
+        try (Session session = driver.session()) {
+            StatementResult sr = session.run(
+                    "CALL db.index.fulltext.queryNodes('username', $username) YIELD node RETURN node.uri as uri",
+                    parameters(
+                            "username",
+                            searchTerm + "*"
                     )
             );
+            while (sr.hasNext()) {
+                Record record = sr.next();
+                users.add(
+                        User.withUsername(
+                                UserUris.ownerUserNameFromUri(
+                                        URI.create(record.get("uri").asString())
+                                )
+                        )
+                );
+            }
+            return users;
         }
-        return users;
     }
 
     private User userFromResult(StatementResult rs, String identifier) {
