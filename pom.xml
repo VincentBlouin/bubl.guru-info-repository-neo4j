@@ -112,6 +112,7 @@
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
