@@ -13,16 +13,16 @@ import guru.bubl.module.model.friend.FriendManager;
 import guru.bubl.module.model.friend.FriendPojo;
 import guru.bubl.module.model.friend.FriendStatus;
 import org.apache.commons.lang.RandomStringUtils;
-import org.neo4j.driver.v1.Driver;
-import org.neo4j.driver.v1.Record;
-import org.neo4j.driver.v1.Session;
-import org.neo4j.driver.v1.StatementResult;
+import org.neo4j.driver.Driver;
+import org.neo4j.driver.Record;
+import org.neo4j.driver.Session;
+import org.neo4j.driver.Result;
 
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.neo4j.driver.v1.Values.parameters;
+import static org.neo4j.driver.Values.parameters;
 
 public class FriendManagerNeo4j implements FriendManager {
 
@@ -54,7 +54,7 @@ public class FriendManagerNeo4j implements FriendManager {
         }
         try (Session session = driver.session()) {
             session.run(
-                    "MATCH(user:Resource{uri:$uri}), (otherUser:Resource{uri:$friendUri}) CREATE UNIQUE (user)-[friendship:friend]->(otherUser) SET friendship.status=$status, friendship.confirmToken=$confirmToken",
+                    "MATCH(user:Resource{uri:$uri}), (otherUser:Resource{uri:$friendUri}) MERGE (user)-[friendship:friend]->(otherUser) SET friendship.status=$status, friendship.confirmToken=$confirmToken",
                     parameters(
                             "uri", user.id(),
                             "friendUri", newFriend.id(),
@@ -111,7 +111,7 @@ public class FriendManagerNeo4j implements FriendManager {
                 "(user)-[friendship:friend]-(friend) " +
                 "RETURN friend.uri as uri, friendship.status as status";
         try (Session session = driver.session()) {
-            StatementResult sr = session.run(
+            Result sr = session.run(
                     query,
                     parameters(
                             "uri", user.id()
@@ -144,7 +144,7 @@ public class FriendManagerNeo4j implements FriendManager {
                 "RETURN friendRequest.status as friendRequestStatus, " +
                 "friendInvitation.status as friendInvitationStatus";
         try (Session session = driver.session()) {
-            StatementResult sr = session.run(
+            Result sr = session.run(
                     query,
                     parameters(
                             "uri", user.id(),

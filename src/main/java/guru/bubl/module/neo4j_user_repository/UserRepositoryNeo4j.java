@@ -12,10 +12,10 @@ import guru.bubl.module.repository.user.ExistingUserException;
 import guru.bubl.module.repository.user.NonExistingUserException;
 import guru.bubl.module.repository.user.UserRepository;
 import org.apache.commons.lang.StringUtils;
-import org.neo4j.driver.v1.Driver;
-import org.neo4j.driver.v1.Record;
-import org.neo4j.driver.v1.Session;
-import org.neo4j.driver.v1.StatementResult;
+import org.neo4j.driver.Driver;
+import org.neo4j.driver.Record;
+import org.neo4j.driver.Session;
+import org.neo4j.driver.Result;
 
 import javax.inject.Inject;
 import java.lang.reflect.Field;
@@ -25,7 +25,7 @@ import java.util.Date;
 import java.util.List;
 
 import static guru.bubl.module.neo4j_graph_manipulator.graph.RestApiUtilsNeo4j.map;
-import static org.neo4j.driver.v1.Values.parameters;
+import static org.neo4j.driver.Values.parameters;
 
 public class UserRepositoryNeo4j implements UserRepository {
 
@@ -97,7 +97,7 @@ public class UserRepositoryNeo4j implements UserRepository {
     public User findByUsername(String username) throws NonExistingUserException {
         URI uri = new UserUris(username).baseUri();
         try (Session session = driver.session()) {
-            StatementResult sr = session.run(
+            Result sr = session.run(
                     String.format(
                             "MATCH(user:Resource{uri:$uri}) %s",
                             returnQueryPart
@@ -119,7 +119,7 @@ public class UserRepositoryNeo4j implements UserRepository {
             throw new NonExistingUserException("");
         }
         try (Session session = driver.session()) {
-            StatementResult sr = session.run(
+            Result sr = session.run(
                     String.format(
                             "MATCH(user:User{email:$email}) %s",
                             returnQueryPart
@@ -257,7 +257,7 @@ public class UserRepositoryNeo4j implements UserRepository {
     public List<User> searchUsers(String searchTerm, User user) {
         List<User> users = new ArrayList<>();
         try (Session session = driver.session()) {
-            StatementResult sr = session.run(
+            Result sr = session.run(
                     "CALL db.index.fulltext.queryNodes('username', $username) YIELD node RETURN node.uri as uri",
                     parameters(
                             "username",
@@ -278,7 +278,7 @@ public class UserRepositoryNeo4j implements UserRepository {
         }
     }
 
-    private User userFromResult(StatementResult rs, String identifier) {
+    private User userFromResult(Result rs, String identifier) {
         if (!rs.hasNext()) {
             throw new NonExistingUserException(identifier);
         }
