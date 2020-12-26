@@ -33,6 +33,7 @@ public class UserRepositoryNeo4j implements UserRepository {
             returnQueryPart =
                     "return user.uri, " +
                             "user.email, " +
+                            "user.consultNotificationDate," +
                             "user." + props.preferredLocales + "," +
                             "user." + props.salt + "," +
                             "user." + props.passwordHash;
@@ -254,6 +255,18 @@ public class UserRepositoryNeo4j implements UserRepository {
         }
     }
 
+    @Override
+    public void updateConsultNotificationDate(User user) {
+        try (Session session = driver.session()) {
+            session.run(
+                    "MATCH(user:Resource{uri:$uri}) SET user.consultNotificationDate=timestamp()",
+                    parameters(
+                            "uri", user.id()
+                    )
+            );
+        }
+    }
+
     public List<User> searchUsers(String searchTerm, User user) {
         List<User> users = new ArrayList<>();
         try (Session session = driver.session()) {
@@ -297,6 +310,14 @@ public class UserRepositoryNeo4j implements UserRepository {
                         "user." + props.preferredLocales
                 ).asString()
         );
+        Object date = record.get("user.consultNotificationDate").asObject();
+        if (date != null) {
+            user.setConsultNotificationDate(
+                    new Date(
+                            (Long) date
+                    )
+            );
+        }
         setSalt(
                 user,
                 record.get(
