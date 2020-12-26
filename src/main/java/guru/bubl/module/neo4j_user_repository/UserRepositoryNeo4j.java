@@ -256,14 +256,15 @@ public class UserRepositoryNeo4j implements UserRepository {
     }
 
     @Override
-    public void updateConsultNotificationDate(User user) {
+    public Date updateConsultNotificationDate(User user) {
         try (Session session = driver.session()) {
-            session.run(
-                    "MATCH(user:Resource{uri:$uri}) SET user.consultNotificationDate=timestamp()",
+            Record record = session.run(
+                    "MATCH(user:Resource{uri:$uri}) SET user.consultNotificationDate=timestamp() RETURN user.consultNotificationDate",
                     parameters(
                             "uri", user.id()
                     )
-            );
+            ).single();
+            return new Date(record.get("user.consultNotificationDate").asLong());
         }
     }
 
